@@ -1,0 +1,73 @@
+:root {
+  color-scheme: dark;
+  --bg: #0f1117;
+  --surface: #1a1e2a;
+  --border: #2a3042;
+  --text: #e7e9f0;
+  --muted: #8d94a9;
+  --accent: #6c93ff;
+  --accent-fg: #0b1020;
+  --ok: #3ddc97;
+  --warn: #f5b942;
+  --bad: #f77b7b;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #f5f6fb;
+    --surface: #ffffff;
+    --border: #e0e3ee;
+    --text: #151827;
+    --muted: #596079;
+    --accent: #3a66f0;
+    --accent-fg: #ffffff;
+    --ok: #0f9f6e;
+    --warn: #b7791f;
+    --bad: #d64545;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.45 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+h1 { margin: 0; font-size: 14px; font-weight: 600; }
+button {
+  font: inherit;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: transparent; color: var(--accent-fg); font-weight: 500; }
+input, textarea {
+  width: 100%;
+  font: inherit;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+input:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+label.field { display: block; margin-bottom: 14px; }
+label.field > span { display: block; margin-bottom: 5px; color: var(--muted); font-weight: 500; }
+.hint { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.grow { flex: 1; }
+.switch { position: relative; width: 38px; height: 22px; flex: none; }
+.switch input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.switch i { position: absolute; inset: 0; border-radius: 999px; background: var(--border); transition: background 120ms; pointer-events: none; }
+.switch i::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+  border-radius: 50%; background: #fff; transition: transform 120ms; box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+.switch input:checked + i { background: var(--accent); }
+.switch input:checked + i::after { transform: translateX(16px); }
+.switch input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }

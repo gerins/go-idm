@@ -486,6 +486,68 @@ func TestProbe(t *testing.T) {
 	}
 }
 
+func TestHTTPErrorShowsServerReason(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"success":false,"value":"file_rate_limited_captcha_required","message":"Captcha required to download this file"}`))
+	})
+	mux.HandleFunc("/html", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`<html><body>Forbidden</body></html>`))
+	})
+	mux.HandleFunc("/challenge", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`<html><title>Just a moment...</title></html>`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	m, _, _ := newTestManager(t, nil)
+
+	cases := map[string]string{
+		"/json":      "server returned 403 Forbidden: Captcha required to download this file",
+		"/html":      "server returned 403 Forbidden",
+		"/challenge": "blocked by a browser check",
+	}
+	for path, want := range cases {
+		_, err := m.Probe(t.Context(), srv.URL+path, nil)
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: error = %v, want it to contain %q", path, err, want)
+		}
+	}
+}
+
+func TestRequestHeadersReachServer(t *testing.T) {
+	var gotReferer, gotCookie atomic.Value
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotReferer.Store(r.Header.Get("Referer"))
+		gotCookie.Store(r.Header.Get("Cookie"))
+		w.Header().Set("Content-Range", "bytes 0-0/10")
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write([]byte("x"))
+	}))
+	defer srv.Close()
+	m, _, _ := newTestManager(t, nil)
+
+	if _, err := m.Probe(t.Context(), srv.URL+"/f.bin", nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := gotReferer.Load(); got != srv.URL+"/" {
+		t.Errorf("default Referer = %v, want %s/", got, srv.URL)
+	}
+
+	h := map[string]string{"referer": "https://example.org/page", "Cookie": "sid=abc"}
+	if _, err := m.Probe(t.Context(), srv.URL+"/f.bin", h); err != nil {
+		t.Fatal(err)
+	}
+	if gotReferer.Load() != "https://example.org/page" || gotCookie.Load() != "sid=abc" {
+		t.Errorf("custom headers not sent: referer=%v cookie=%v", gotReferer.Load(), gotCookie.Load())
+	}
+}
+
 func TestPlanSegments(t *testing.T) {
 	cases := []struct {
 		size      int64

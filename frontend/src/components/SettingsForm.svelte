@@ -4,6 +4,7 @@
   import { toasts } from '../lib/toasts.svelte'
   import type { Config } from '../lib/types'
   import Icon from './Icon.svelte'
+  import IntegrationPanel from './IntegrationPanel.svelte'
   import Toggle from './Toggle.svelte'
 
   let { onclose }: { onclose: () => void } = $props()
@@ -17,6 +18,7 @@
   let proxy = $state(initial.proxy)
   let userAgent = $state(initial.userAgent)
   let watchClipboard = $state(initial.watchClipboard)
+  let confirmCaptured = $state(initial.confirmCaptured)
 
   const mb = initial.speedLimit >= 1024 * 1024 && initial.speedLimit % (1024 * 1024) === 0
   let limitUnit = $state<'KB' | 'MB'>(mb ? 'MB' : 'KB')
@@ -51,6 +53,7 @@
         proxy: proxy.trim(),
         userAgent: userAgent.trim(),
         watchClipboard,
+        confirmCaptured,
         speedLimit: Math.max(0, Math.round((parseFloat(limitValue) || 0) * unit)),
       })
       toasts.success('Settings saved')
@@ -142,6 +145,15 @@
       <div class="flex items-center gap-4">
         {@render row('Watch clipboard for links', 'Offer to download file links you copy')}
         <Toggle bind:checked={watchClipboard} label="Watch clipboard for links" />
+      </div>
+    </section>
+
+    <section class="space-y-3">
+      <h3 class="text-[11px] font-semibold tracking-wider text-faint uppercase">Browser integration</h3>
+      <IntegrationPanel />
+      <div class="flex items-center gap-4">
+        {@render row('Ask before downloading', 'Show the Add dialog for downloads captured from your browser')}
+        <Toggle bind:checked={confirmCaptured} label="Ask before downloading captured links" />
       </div>
     </section>
 

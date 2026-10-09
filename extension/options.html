@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GoIDM options</title>
+    <link rel="stylesheet" href="ui.css" />
+    <style>
+      body { padding: 18px; max-width: 460px; }
+      h1 { margin-bottom: 16px; font-size: 16px; }
+      textarea { min-height: 84px; resize: vertical; }
+      #saved { color: var(--ok); opacity: 0; transition: opacity 150ms; }
+      #saved.on { opacity: 1; }
+      .id { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border); }
+      code { user-select: all; }
+    </style>
+  </head>
+  <body>
+    <h1>GoIDM options</h1>
+
+    <label class="field">
+      <span>Minimum size to capture (MB)</span>
+      <input id="minSize" type="number" min="0" step="any" />
+      <p class="hint">Smaller downloads stay in the browser. Use 0 to capture everything. Downloads of unknown size are always captured.</p>
+    </label>
+
+    <label class="field">
+      <span>Never capture from these sites</span>
+      <textarea id="excluded" spellcheck="false" placeholder="example.com&#10;intranet.local"></textarea>
+      <p class="hint">One site per line. Subdomains are included.</p>
+    </label>
+
+    <div class="row"><span id="saved">Saved</span></div>
+
+    <p class="hint id">Extension ID: <code id="extId"></code></p>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

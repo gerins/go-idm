@@ -6,11 +6,13 @@ class UI {
   query = $state('')
   addOpen = $state(false)
   addPrefill = $state('')
+  addHeaders = $state.raw<Record<string, string>>({})
   settingsOpen = $state(false)
   removeTarget = $state.raw<Info | null>(null)
 
-  openAdd(prefill = '') {
+  openAdd(prefill = '', headers: Record<string, string> = {}) {
     this.addPrefill = prefill
+    this.addHeaders = headers
     this.addOpen = true
   }
 }

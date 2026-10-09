@@ -10,8 +10,20 @@ export function ChooseFolder(arg1) {
   return window['go']['main']['App']['ChooseFolder'](arg1);
 }
 
+export function FrontendReady() {
+  return window['go']['main']['App']['FrontendReady']();
+}
+
 export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
+}
+
+export function GetIntegration() {
+  return window['go']['main']['App']['GetIntegration']();
+}
+
+export function InstallIntegration() {
+  return window['go']['main']['App']['InstallIntegration']();
 }
 
 export function ListDownloads() {
@@ -30,12 +42,16 @@ export function PauseDownload(arg1) {
   return window['go']['main']['App']['PauseDownload'](arg1);
 }
 
-export function ProbeURL(arg1) {
-  return window['go']['main']['App']['ProbeURL'](arg1);
+export function ProbeURL(arg1, arg2) {
+  return window['go']['main']['App']['ProbeURL'](arg1, arg2);
 }
 
 export function RemoveDownload(arg1, arg2) {
   return window['go']['main']['App']['RemoveDownload'](arg1, arg2);
+}
+
+export function RemoveIntegration() {
+  return window['go']['main']['App']['RemoveIntegration']();
 }
 
 export function ResumeAll() {
@@ -44,6 +60,10 @@ export function ResumeAll() {
 
 export function ResumeDownload(arg1) {
   return window['go']['main']['App']['ResumeDownload'](arg1);
+}
+
+export function RevealExtensionFolder() {
+  return window['go']['main']['App']['RevealExtensionFolder']();
 }
 
 export function SaveConfig(arg1) {

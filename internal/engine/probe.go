@@ -2,11 +2,14 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"go-idm/internal/netx"
 )
@@ -25,10 +28,57 @@ type ProbeResult struct {
 // HTTPError is returned for unexpected HTTP status codes.
 type HTTPError struct {
 	Status int
+	Detail string // the server's own explanation, when it gave a readable one
 }
 
 func (e *HTTPError) Error() string {
-	return fmt.Sprintf("server returned %d %s", e.Status, http.StatusText(e.Status))
+	msg := fmt.Sprintf("server returned %d %s", e.Status, http.StatusText(e.Status))
+	if e.Detail != "" {
+		msg += ": " + e.Detail
+	}
+	return msg
+}
+
+// newHTTPError builds an HTTPError and reads a short, human-readable reason
+// from the response body (JSON message fields or plain text).
+func newHTTPError(resp *http.Response) *HTTPError {
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+	return &HTTPError{Status: resp.StatusCode, Detail: errorDetail(resp.Header.Get("Content-Type"), b)}
+}
+
+func errorDetail(contentType string, body []byte) string {
+	text := strings.TrimSpace(string(body))
+	if text == "" || !utf8.ValidString(text) {
+		return ""
+	}
+	lower := strings.ToLower(text)
+	if strings.Contains(lower, "just a moment") || strings.Contains(lower, "cf-chl") {
+		return "blocked by a browser check; add your browser's Cookie under Advanced"
+	}
+	if strings.HasPrefix(text, "{") {
+		var m map[string]any
+		if json.Unmarshal(body, &m) == nil {
+			for _, k := range []string{"message", "error", "value", "reason"} {
+				if s, ok := m[k].(string); ok && s != "" {
+					return clip(s)
+				}
+			}
+		}
+		return ""
+	}
+	ct := strings.ToLower(contentType)
+	if strings.HasPrefix(text, "<") || !(strings.HasPrefix(ct, "text/plain") || ct == "") {
+		return "" // an HTML error page is not useful to show
+	}
+	return clip(text)
+}
+
+func clip(s string) string {
+	r := []rune(s)
+	if len(r) > 160 {
+		return string(r[:160]) + "…"
+	}
+	return s
 }
 
 func (e *HTTPError) retryable() bool {
@@ -59,6 +109,11 @@ func newRequest(ctx context.Context, rawURL string, headers map[string]string) (
 	}
 	// Byte ranges only make sense on the identity encoding.
 	req.Header.Set("Accept-Encoding", "identity")
+	// Browsers send a Referer, and some hosts reject requests without a
+	// same-site one. Default to the site's own origin; callers can override.
+	if req.Header.Get("Referer") == "" {
+		req.Header.Set("Referer", req.URL.Scheme+"://"+req.URL.Host+"/")
+	}
 	return req, nil
 }
 
@@ -106,7 +161,7 @@ func Probe(ctx context.Context, c *http.Client, rawURL string, headers map[strin
 			res.Resumable = true
 		}
 	default:
-		return nil, &HTTPError{Status: resp.StatusCode}
+		return nil, newHTTPError(resp)
 	}
 	return res, nil
 }

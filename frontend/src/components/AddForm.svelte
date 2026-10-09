@@ -26,6 +26,18 @@
   let limitValue = $state('')
   let limitUnit = $state<'KB' | 'MB'>('KB')
   let startNow = $state(true)
+  let advancedOpen = $state(false)
+  // Headers captured from the browser (Referer, Cookie, User-Agent) prefill Advanced.
+  const preset = ui.addHeaders
+  const fromBrowser = Object.keys(preset).length > 0
+  let referer = $state(preset.Referer ?? '')
+  let cookie = $state(preset.Cookie ?? '')
+  let extraHeaders = $state(
+    Object.entries(preset)
+      .filter(([k]) => k !== 'Referer' && k !== 'Cookie')
+      .map(([k, v]) => `${k}: ${v}`)
+      .join('\n'),
+  )
   let submitting = $state(false)
   let error = $state('')
 
@@ -45,6 +57,27 @@
     return `${base}${sep}${categoryFor(fileName)}`
   })
 
+  // Browser context some hosts require: Referer, Cookie and "Name: value" lines.
+  const headers = $derived.by(() => {
+    const h: Record<string, string> = {}
+    if (referer.trim()) h.Referer = referer.trim()
+    if (cookie.trim()) h.Cookie = cookie.trim()
+    for (const line of extraHeaders.split('\n')) {
+      const i = line.indexOf(':')
+      if (i <= 0) continue
+      const k = line.slice(0, i).trim()
+      const v = line.slice(i + 1).trim()
+      if (k && v) h[k] = v
+    }
+    return h
+  })
+
+  const needsBrowserContext = $derived(probe.state === 'error' && /\b(401|403)\b/.test(probe.msg))
+
+  $effect(() => {
+    if (needsBrowserContext) advancedOpen = true
+  })
+
   let seq = 0
   $effect(() => {
     if (urls.length !== 1) {
@@ -52,11 +85,12 @@
       return
     }
     const url = urls[0]
+    const hdrs = headers
     const mine = ++seq
     probe = { state: 'loading' }
     const timer = setTimeout(async () => {
       try {
-        const r = await api.probe(url)
+        const r = await api.probe(url, hdrs)
         if (mine === seq) probe = { state: 'ok', r }
       } catch (e) {
         if (mine === seq) probe = { state: 'error', msg: errMsg(e) }
@@ -90,7 +124,7 @@
           fileName: single && nameEdit ? nameEdit : '',
           connections: resumable ? connections : 1,
           speedLimit: limit,
-          headers: {},
+          headers,
           startPaused: !startNow,
         })
         added++
@@ -118,6 +152,11 @@
         bind:value={text}
         spellcheck="false"
       ></textarea>
+      {#if fromBrowser}
+        <p class="mt-1.5 flex items-center gap-1.5 text-xs text-success">
+          <Icon name="check" size={13} /> Captured from your browser, including its session
+        </p>
+      {/if}
       {#if duplicate}
         <p class="mt-1.5 text-xs text-warn">This link is already in your list. It will be downloaded again.</p>
       {/if}
@@ -155,7 +194,15 @@
             <Icon name="alert" size={16} class="mt-0.5 shrink-0" />
             <div class="text-xs">
               <div class="font-medium">Can't reach this link</div>
-              <div class="text-muted">{probe.msg}. You can still add it anyway.</div>
+              <div class="text-muted">{probe.msg}.</div>
+              {#if needsBrowserContext}
+                <div class="mt-1 text-muted">
+                  Some sites check what a browser sends. Add the Referer or Cookie from your browser under Advanced
+                  below.
+                </div>
+              {:else}
+                <div class="text-muted">You can still add it anyway.</div>
+              {/if}
             </div>
           </div>
         {:else}
@@ -215,6 +262,51 @@
         </div>
       </div>
     </div>
+
+    <details class="group rounded-xl border border-border" bind:open={advancedOpen}>
+      <summary class="flex cursor-default list-none items-center justify-between px-3 py-2 text-muted select-none">
+        <span class="font-medium">Advanced</span>
+        <span class="text-xs text-faint">Referer, Cookie, headers</span>
+      </summary>
+      <div class="space-y-3 border-t border-border p-3">
+        <div>
+          <label class="label" for="add-ref">Referer</label>
+          <input
+            id="add-ref"
+            class="field selectable"
+            placeholder="Defaults to the link's own site"
+            bind:value={referer}
+            spellcheck="false"
+          />
+        </div>
+        <div>
+          <label class="label" for="add-cookie">Cookie</label>
+          <input
+            id="add-cookie"
+            class="field selectable"
+            placeholder="name=value; other=value"
+            bind:value={cookie}
+            spellcheck="false"
+            autocomplete="off"
+          />
+        </div>
+        <div>
+          <label class="label" for="add-hdrs">Other headers</label>
+          <textarea
+            id="add-hdrs"
+            class="field selectable"
+            rows="2"
+            placeholder="Authorization: Bearer …"
+            bind:value={extraHeaders}
+            spellcheck="false"
+          ></textarea>
+        </div>
+        <p class="text-xs text-faint">
+          Copy these from your browser's developer tools (Network tab, request headers). They are stored on this
+          computer with the download.
+        </p>
+      </div>
+    </details>
 
     {#if error}
       <p class="rounded-lg bg-danger/10 px-3 py-2 text-xs text-danger" role="alert">{error}</p>

@@ -199,6 +199,12 @@ func (m *Manager) Probe(ctx context.Context, rawURL string, headers map[string]s
 	return Probe(ctx, client, rawURL, h)
 }
 
+// CheckURL reports whether raw is a URL the engine can download.
+func CheckURL(raw string) error {
+	_, err := parseURL(raw)
+	return err
+}
+
 // Add registers a download and schedules it.
 func (m *Manager) Add(req AddRequest) (Info, error) {
 	u, err := parseURL(req.URL)

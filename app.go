@@ -4,20 +4,25 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"go-idm/internal/appdir"
 	"go-idm/internal/engine"
+	"go-idm/internal/ipc"
 	"go-idm/internal/store"
 )
+
+const appVersion = "0.1.0"
 
 const (
 	eventUpdate    = "downloads:update"
 	eventRemoved   = "downloads:removed"
 	eventClipboard = "clipboard:url"
+	eventExternal  = "external:add"
 )
 
 // App is the Wails-bound facade over the engine. Every exported method is
@@ -26,22 +31,24 @@ type App struct {
 	ctx context.Context
 	st  *store.Store
 	mgr *engine.Manager
+	ipc *ipc.Server
+
+	// Captured downloads that arrive before the UI has loaded (the browser
+	// extension can start the app) are held here until it asks for them.
+	extMu   sync.Mutex
+	uiReady bool
+	pending []ExternalAdd
+}
+
+// ExternalAdd is a download captured by the browser extension, offered to the
+// user in the Add dialog.
+type ExternalAdd struct {
+	URL      string            `json:"url"`
+	FileName string            `json:"fileName"`
+	Headers  map[string]string `json:"headers"`
 }
 
 func NewApp() *App { return &App{} }
-
-// dataDir returns where the database lives. GOIDM_DATA_DIR overrides it,
-// which is handy for portable installs and for testing.
-func dataDir() (string, error) {
-	if d := os.Getenv("GOIDM_DATA_DIR"); d != "" {
-		return d, nil
-	}
-	base, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(base, "GoIDM"), nil
-}
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
@@ -57,7 +64,7 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) init(ctx context.Context) error {
-	dir, err := dataDir()
+	dir, err := appdir.Dir()
 	if err != nil {
 		return fmt.Errorf("locate data directory: %w", err)
 	}
@@ -90,11 +97,21 @@ func (a *App) init(ctx context.Context) error {
 	mgr.Start()
 	a.st, a.mgr = st, mgr
 
+	// Browser integration is optional: the app works without it.
+	a.ipc = ipc.NewServer(dir, appVersion, ipcHandler{a})
+	if err := a.ipc.Start(); err != nil {
+		slog.Warn("browser integration unavailable", "err", err)
+		a.ipc = nil
+	}
+
 	go a.watchClipboard(ctx)
 	return nil
 }
 
 func (a *App) shutdown(context.Context) {
+	if a.ipc != nil {
+		a.ipc.Close()
+	}
 	if a.mgr != nil {
 		a.mgr.Close()
 	}
@@ -136,10 +153,11 @@ func (a *App) ListDownloads() []engine.Info { return a.mgr.List() }
 func (a *App) AddDownload(req engine.AddRequest) (engine.Info, error) { return a.mgr.Add(req) }
 
 // ProbeURL fetches size, resumability and file name for the Add dialog.
-func (a *App) ProbeURL(url string) (*engine.ProbeResult, error) {
+// headers carries browser context (Referer, Cookie, ...) the user supplied.
+func (a *App) ProbeURL(url string, headers map[string]string) (*engine.ProbeResult, error) {
 	ctx, cancel := context.WithTimeout(a.ctx, 20*time.Second)
 	defer cancel()
-	return a.mgr.Probe(ctx, url, nil)
+	return a.mgr.Probe(ctx, url, headers)
 }
 
 func (a *App) PauseDownload(id string) error  { return a.mgr.Pause(id) }
@@ -198,4 +216,56 @@ func (a *App) ChooseFolder(current string) (string, error) {
 		DefaultDirectory:     current,
 		CanCreateDirectories: true,
 	})
+}
+
+// FrontendReady is called once by the UI after it has subscribed to events.
+// It returns downloads captured while the UI was still loading.
+func (a *App) FrontendReady() []ExternalAdd {
+	a.extMu.Lock()
+	defer a.extMu.Unlock()
+	a.uiReady = true
+	out := a.pending
+	a.pending = nil
+	return out
+}
+
+func (a *App) deliverExternal(e ExternalAdd) {
+	a.extMu.Lock()
+	if !a.uiReady {
+		a.pending = append(a.pending, e)
+		a.extMu.Unlock()
+		return
+	}
+	a.extMu.Unlock()
+	runtime.EventsEmit(a.ctx, eventExternal, e)
+}
+
+func (a *App) bringToFront() {
+	runtime.WindowUnminimise(a.ctx)
+	runtime.Show(a.ctx)
+	// Windows refuses to steal focus; a brief always-on-top toggle raises the window.
+	runtime.WindowSetAlwaysOnTop(a.ctx, true)
+	runtime.WindowSetAlwaysOnTop(a.ctx, false)
+}
+
+// ipcHandler adapts the App to the browser-facing IPC without exposing these
+// methods to the frontend bindings.
+type ipcHandler struct{ a *App }
+
+func (h ipcHandler) Add(req ipc.AddRequest) error {
+	if err := engine.CheckURL(req.URL); err != nil {
+		return err
+	}
+	if h.a.mgr.Config().ConfirmCaptured {
+		h.a.deliverExternal(ExternalAdd{URL: req.URL, FileName: req.FileName, Headers: req.Headers()})
+		h.a.bringToFront()
+		return nil
+	}
+	_, err := h.a.mgr.Add(engine.AddRequest{URL: req.URL, FileName: req.FileName, Headers: req.Headers()})
+	return err
+}
+
+func (h ipcHandler) Show() error {
+	h.a.bringToFront()
+	return nil
 }

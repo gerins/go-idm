@@ -38,6 +38,7 @@ export interface Config {
   userAgent: string
   categorize: boolean
   watchClipboard: boolean
+  confirmCaptured: boolean
   maxRetries: number
 }
 
@@ -62,3 +63,25 @@ export interface AddRequest {
 }
 
 export const CATEGORIES = ['Video', 'Music', 'Images', 'Documents', 'Compressed', 'Programs', 'General'] as const
+
+export interface BrowserStatus {
+  name: string
+  installed: boolean
+  current: boolean
+}
+
+export interface Integration {
+  hostPath: string
+  hostFound: boolean
+  extensionId: string
+  extensionDir: string
+  extensionFound: boolean
+  browsers: BrowserStatus[]
+}
+
+/** A download captured by the browser extension. */
+export interface ExternalAdd {
+  url: string
+  fileName: string
+  headers: Record<string, string> | null
+}

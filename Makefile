@@ -6,6 +6,13 @@ export PATH := $(PATH):$(GOBIN)
 
 WAILS ?= wails
 BIN   := build/bin
+UNAME := $(shell uname -s)
+
+# Copies the extension without dev-only files: $(call copy-extension,<dest>)
+define copy-extension
+	rm -rf $(1) && mkdir -p $(dir $(1)) && cp -R extension $(1)
+	rm -rf $(1)/test $(1)/package.json $(1)/icons/gen.go
+endef
 
 .PHONY: help
 help: ## Show this help
@@ -14,7 +21,7 @@ help: ## Show this help
 ##@ Run
 
 .PHONY: dev
-dev: ## Run the app with live reload (UI also at http://localhost:34115)
+dev: build-host ## Run the app with live reload (UI also at http://localhost:34115)
 	$(WAILS) dev
 
 .PHONY: cli
@@ -24,15 +31,32 @@ cli: ## Run the headless CLI, e.g. make cli ARGS="-o ./out https://host/file.zip
 ##@ Build
 
 .PHONY: build
-build: ## Production build for the current OS
+build: ## Production build for the current OS, with the native host and extension bundled
 	$(WAILS) build
+	$(MAKE) --no-print-directory bundle-extras
+
+.PHONY: bundle-extras
+bundle-extras:
+ifeq ($(UNAME),Darwin)
+	go build -o $(BIN)/GoIDM.app/Contents/MacOS/idm-host ./cmd/idm-host
+	$(call copy-extension,$(BIN)/GoIDM.app/Contents/Resources/extension)
+else
+	go build -o $(BIN)/idm-host ./cmd/idm-host
+	$(call copy-extension,$(BIN)/extension)
+endif
 
 .PHONY: build-windows
-build-windows: ## Cross-compile for Windows (build/bin/goidm.exe)
+build-windows: ## Cross-compile for Windows (goidm.exe, idm-host.exe and extension/ in build/bin)
 	$(WAILS) build -platform windows/amd64
+	GOOS=windows GOARCH=amd64 go build -o $(BIN)/idm-host.exe ./cmd/idm-host
+	$(call copy-extension,$(BIN)/extension)
+
+.PHONY: build-host
+build-host: ## Build the native messaging host to build/bin/idm-host (used by make dev)
+	go build -o $(BIN)/idm-host ./cmd/idm-host
 
 .PHONY: build-windows-installer
-build-windows-installer: ## Windows NSIS installer (needs NSIS installed)
+build-windows-installer: build-windows ## Windows NSIS installer (needs NSIS installed)
 	$(WAILS) build -platform windows/amd64 -nsis
 
 .PHONY: build-cli
@@ -48,8 +72,12 @@ build-all: build build-windows build-cli ## Build app for this OS and Windows, p
 test: ## Run Go tests with the race detector
 	go test -race -count=1 ./...
 
+.PHONY: ext-test
+ext-test: ## Unit-test the browser extension logic (needs Node)
+	cd extension && node --test test/
+
 .PHONY: check
-check: fmt-check vet frontend-check test ## Everything CI would run
+check: fmt-check vet frontend-check ext-test test ## Everything CI would run
 
 .PHONY: vet
 vet: ## go vet for this OS and Windows

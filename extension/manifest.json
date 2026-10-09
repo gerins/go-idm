@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "GoIDM Integration",
+  "version": "0.1.0",
+  "description": "Send browser downloads to GoIDM, the desktop download manager.",
+  "minimum_chrome_version": "110",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA11i35abwRPjpXH+dbOFyFQOk7fk4hcV1VWteAmwomQHapjWJnMAm0hEa8A6Vr64ESTXh49U4+FkoxSTxLEzYS6ycBRDPcAkQKXQBzWHdfjoqyBocR3TigH3Y/nn8ja2C8Tzg5sUCsE2S+SzP0BlxxnhNUTszgrESUiWcEW/U8GeHHBrzaZQh0t0LLpFiRtMY8bJTAAsax1tG7npceqByzQSVTTSgbi7VAP67oFw1qSOCDbg2B3a5G6R5bVjF2F1+zook7olg2WoEbvTThCWM1isyzetCoEvvUcsi5o3ASe7MsY6NCnR8KbSa2GHUrsvMBIxeKXSEUKGLNy4RTpWGKwIDAQAB",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["downloads", "nativeMessaging", "cookies", "contextMenus", "storage"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": {
+    "default_title": "GoIDM",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "options_ui": { "page": "options.html", "open_in_tab": false }
+}

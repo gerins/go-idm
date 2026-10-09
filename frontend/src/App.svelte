@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { EventsOn } from '../wailsjs/runtime/runtime'
+  import { api } from './lib/api'
+  import type { ExternalAdd } from './lib/types'
   import AddDialog from './components/AddDialog.svelte'
   import DownloadRow from './components/DownloadRow.svelte'
   import EmptyState from './components/EmptyState.svelte'
@@ -25,8 +27,17 @@
   const typing = (t: EventTarget | null) =>
     t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')
 
+  function openCaptured(e: ExternalAdd) {
+    ui.openAdd(e.url, e.headers ?? {})
+  }
+
   onMount(() => {
-    Promise.all([downloads.init(), settings.load()]).catch((e) => toasts.error('Failed to start', errMsg(e)))
+    // Listen first, then ask for anything captured while the UI was loading.
+    const offExternal = EventsOn('external:add', openCaptured)
+    Promise.all([downloads.init(), settings.load()])
+      .then(() => api.frontendReady())
+      .then((pending) => pending.forEach(openCaptured))
+      .catch((e) => toasts.error('Failed to start', errMsg(e)))
 
     const off = EventsOn('clipboard:url', (url: string) => {
       if (ui.addOpen || downloads.has(url)) return
@@ -44,7 +55,10 @@
         ],
       })
     })
-    return off
+    return () => {
+      off()
+      offExternal()
+    }
   })
 
   function onPaste(e: ClipboardEvent) {

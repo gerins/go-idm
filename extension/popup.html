@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GoIDM</title>
+    <link rel="stylesheet" href="ui.css" />
+    <style>
+      body { width: 320px; padding: 14px; }
+      header { margin-bottom: 12px; }
+      header img { width: 24px; height: 24px; border-radius: 6px; }
+      .card { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-bottom: 10px; }
+      .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+      .dot.ok { background: var(--ok); }
+      .dot.warn { background: var(--warn); }
+      .dot.bad { background: var(--bad); }
+      #detail { margin: 6px 0 0 19px; color: var(--muted); font-size: 12px; }
+      code { font-size: 11px; user-select: all; }
+      .actions { display: flex; gap: 8px; margin-top: 12px; }
+      .actions button { flex: 1; }
+    </style>
+  </head>
+  <body>
+    <header class="row">
+      <img src="icons/icon48.png" alt="" />
+      <h1>GoIDM</h1>
+    </header>
+
+    <div class="card">
+      <div class="row">
+        <span id="dot" class="dot"></span>
+        <strong id="status" class="grow">Checking…</strong>
+      </div>
+      <div id="detail"></div>
+    </div>
+
+    <div class="card row">
+      <div class="grow">
+        <strong>Capture downloads</strong>
+        <div class="hint" style="margin-top: 0">Send browser downloads to GoIDM</div>
+      </div>
+      <label class="switch" title="Capture downloads">
+        <input id="enabled" type="checkbox" aria-label="Capture downloads" />
+        <i></i>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button id="open" class="primary">Open GoIDM</button>
+      <button id="options">Options</button>
+    </div>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

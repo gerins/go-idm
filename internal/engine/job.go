@@ -320,10 +320,10 @@ func (j *job) fetch(ctx context.Context, i int) (err error) {
 		case http.StatusOK:
 			return fatalf("server stopped honoring Range requests")
 		default:
-			return &HTTPError{Status: resp.StatusCode}
+			return newHTTPError(resp)
 		}
 	} else if resp.StatusCode != http.StatusOK {
-		return &HTTPError{Status: resp.StatusCode}
+		return newHTTPError(resp)
 	}
 	if e := resp.Header.Get("ETag"); j.etag != "" && e != "" && e != j.etag {
 		return fatalf("remote file changed during download")
