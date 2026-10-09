@@ -2,6 +2,8 @@ import { send, describeError } from './lib/native.js'
 import { buildAddMessage, cookieHeader, knownSize, pickPageUrl, shouldCapture } from './lib/capture.js'
 import { getSettings } from './lib/settings.js'
 import { ext } from './lib/api.js'
+import { classifyMedia } from './lib/media.js'
+import { clearMedia, getMedia, recordMedia } from './lib/mediastore.js'
 
 const MENU_ID = 'goidm-download'
 
@@ -13,12 +15,11 @@ async function cookiesFor(url) {
   }
 }
 
-async function activeTabUrl() {
+async function openTabs() {
   try {
-    const [tab] = await ext.tabs.query({ active: true, lastFocusedWindow: true })
-    return tab?.url ?? ''
+    return await ext.tabs.query({})
   } catch {
-    return ''
+    return []
   }
 }
 
@@ -68,7 +69,7 @@ async function onDownloadCreated(item) {
   const res = await handOff({
     url: item.url,
     referrer: item.referrer,
-    pageUrl: pickPageUrl(item.referrer, await activeTabUrl()),
+    pageUrl: pickPageUrl(item.referrer, await openTabs()),
     mime: item.mime,
     size: knownSize(item),
   })
@@ -111,11 +112,53 @@ ext.contextMenus.onClicked.addListener(async (info, tab) => {
   const res = await handOff({
     url,
     referrer: info.frameUrl || info.pageUrl || tab?.url,
-    pageUrl: pickPageUrl(info.pageUrl || tab?.url, ''),
+    pageUrl: pickPageUrl(info.pageUrl || tab?.url),
   })
   if (res.ok) await refreshBadge()
   else {
     await setBadge('!')
     console.warn('GoIDM hand-off failed:', describeError(res.error))
   }
+})
+
+// Video and audio files the page loads are remembered per tab and listed in the
+// popup, with their count on the toolbar icon. Classifying is cheap and
+// synchronous, so the setting is only read for responses that match.
+ext.webRequest.onHeadersReceived.addListener(
+  (details) => {
+    if (details.tabId < 0) return
+    const item = classifyMedia({ url: details.url, status: details.statusCode, headers: details.responseHeaders })
+    if (item) onMediaFound(details.tabId, item).catch((e) => console.error('GoIDM media detection failed', e))
+  },
+  { urls: ['http://*/*', 'https://*/*'], types: ['media', 'xmlhttprequest', 'other'] },
+  ['responseHeaders'],
+)
+
+async function onMediaFound(tabId, item) {
+  if (!(await getSettings()).detectMedia) return
+  const count = await recordMedia(tabId, item)
+  await ext.action.setBadgeBackgroundColor({ tabId, color: '#3a66f0' })
+  await ext.action.setBadgeText({ tabId, text: String(count) })
+}
+
+// A new page starts a new list.
+ext.tabs.onUpdated.addListener((tabId, change) => {
+  if (change.status !== 'loading') return
+  clearMedia(tabId).catch(() => {})
+  ext.action.setBadgeText({ tabId, text: '' }).catch(() => {})
+})
+ext.tabs.onRemoved.addListener((tabId) => clearMedia(tabId).catch(() => {}))
+
+// The popup's Download button. Only files we detected on that tab are accepted.
+async function downloadMedia({ tabId, url }) {
+  const entry = (await getMedia(tabId)).find((m) => m.url === url)
+  if (!entry) return { ok: false, error: 'media_gone' }
+  const page = (await ext.tabs.get(tabId).catch(() => null))?.url ?? ''
+  return handOff({ url: entry.url, referrer: page, pageUrl: pickPageUrl(page), mime: entry.mime, size: entry.size })
+}
+
+ext.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type !== 'download-media' || typeof msg.tabId !== 'number' || typeof msg.url !== 'string') return
+  downloadMedia(msg).then(sendResponse, (e) => sendResponse({ ok: false, error: String(e?.message ?? e) }))
+  return true // the response is sent asynchronously
 })

@@ -34,6 +34,8 @@ export function describeError(code) {
       return `GoIDM's native host does not allow this extension (ID ${ext.runtime.id}). Reinstall the integration from GoIDM Settings.`
     case 'host_exited':
       return 'The GoIDM native host stopped unexpectedly.'
+    case 'media_gone':
+      return 'That video is no longer listed. Reload the page and play it again.'
     case 'app_not_running':
       return "GoIDM isn't running."
     case 'app_launch_failed':

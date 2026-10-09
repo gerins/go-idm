@@ -4,6 +4,7 @@ export const DEFAULTS = Object.freeze({
   enabled: true,
   minSizeMB: 1,
   excludedHosts: [],
+  detectMedia: true,
 })
 
 export async function getSettings() {

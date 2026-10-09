@@ -15,6 +15,15 @@
       .dot.bad { background: var(--bad); }
       #detail { margin: 6px 0 0 19px; color: var(--muted); font-size: 12px; }
       code { font-size: 11px; user-select: all; }
+      #media[hidden] { display: none; }
+      #media h2 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+      #mediaList { list-style: none; margin: 0; padding: 0; max-height: 180px; overflow-y: auto; }
+      #mediaList li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--border); }
+      #mediaList li:first-child { border-top: 0; }
+      #mediaList .info { flex: 1; min-width: 0; }
+      #mediaList .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #mediaList .meta { color: var(--muted); font-size: 12px; }
+      #mediaList button { height: 28px; padding: 0 10px; flex: none; }
       .actions { display: flex; gap: 8px; margin-top: 12px; }
       .actions button { flex: 1; }
     </style>
@@ -31,6 +40,11 @@
         <strong id="status" class="grow">Checking…</strong>
       </div>
       <div id="detail"></div>
+    </div>
+
+    <div id="media" class="card" hidden>
+      <h2>Videos on this page</h2>
+      <ul id="mediaList"></ul>
     </div>
 
     <div class="card row">

@@ -21,6 +21,11 @@ async function init() {
   const s = await getSettings()
   $('minSize').value = s.minSizeMB
   $('excluded').value = s.excludedHosts.join('\n')
+  $('detectMedia').checked = s.detectMedia
+  $('detectMedia').addEventListener('change', async (e) => {
+    await saveSettings({ detectMedia: e.target.checked })
+    flashSaved()
+  })
   $('extId').textContent = ext.runtime.id
 
   let debounce

@@ -10,6 +10,7 @@ A desktop download manager written in Go (engine) with a Svelte UI, packaged wit
 - Retries with backoff, stall detection, proxy support (http, https, socks5)
 - Filename detection (Content-Disposition, URL, MIME), safe on Windows, collision-free names
 - Sorting into Video, Music, Documents and other folders
+- Detects videos and audio on web pages and lists them in the extension popup for one-click download (direct files only, not HLS/DASH)
 - Remembers the web page each browser download came from, with a button to open it again
 - Clipboard link watcher, paste (Ctrl+V) and drag-and-drop of links
 - Light and dark themes following the OS

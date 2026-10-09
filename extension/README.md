@@ -28,7 +28,8 @@ The add-on ID `goidm@go-idm` is fixed in `manifest.firefox.json` and is what the
 ## What it does
 
 - **Captures downloads.** When the browser starts a download it is paused, sent to GoIDM, and cancelled in the browser only after GoIDM accepted it. If GoIDM can't be reached the download just resumes in the browser, so nothing is lost.
-- **Remembers the download page.** The page the download came from is saved with it, and the link button on a download in GoIDM reopens that page in your browser (to fetch a fresh link or find the next file). The browser often trims the referrer to just the site, so the active tab's address is used when it is on the same site. Downloads from before this feature fall back to their referrer.
+- **Remembers the download page.** The page the download came from is saved with it, and the link button on a download in GoIDM reopens that page in your browser (to fetch a fresh link or find the next file). The browser often trims the referrer to just the site (for example when the file is served from another host), so the address of an open tab on that site is used instead, preferring the most recently used one. Downloads from before this feature fall back to their referrer.
+- **Detects videos and audio.** Media files a page loads (`.mp4`, `.webm`, `.mp3` and similar, served as a single file) are listed under **Videos on this page** in the popup, with their count on the toolbar icon. Click **Download** to send one to GoIDM with the page as its referrer. Turn it off in Options. Streaming formats (HLS `.m3u8`, DASH) and sites that serve video in pieces, such as YouTube, are not supported. A video only shows up once the page has started loading it, so press play if the list is empty.
 - **Right-click, Download with GoIDM** on links, images, video and audio.
 - **Starts GoIDM** if it isn't running when a download is captured.
 - **Popup** shows connection status and has the on/off switch. **Options** sets a minimum size (default 1 MB) and a list of sites to leave alone.
@@ -41,6 +42,7 @@ Cookies are read only for the URL being downloaded and are sent only to the GoID
 
 ## Limits
 
+- Video detection cannot see `blob:` or streamed (HLS/DASH) video, only plain files.
 - Downloads that cannot be replayed with a plain GET (POST forms, `blob:` URLs) stay in the browser.
 - Firefox: cookies are read from the default cookie store, so downloads from a container tab are sent without that container's cookies.
 - If you publish the Chromium extension to a store, the store assigns its own ID. Pass that ID to `nativehost.Install` so the host allows it. The Firefox ID is the one in `manifest.firefox.json`, so signing keeps it.
