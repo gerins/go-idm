@@ -644,6 +644,11 @@ func (m *Manager) requestHeaders(extra map[string]string) map[string]string {
 func (m *Manager) tick() {
 	m.mu.Lock()
 	m.tickN++
+	// Publish the claim to the shared entry now, under the same lock. Until it
+	// is there another download picking a name would not see this one and could
+	// choose the same file.
+	e := j.e
+	e.d.Dir, e.d.FileName, e.d.Category, e.d.Claimed = dir, name, category, true
 	persist := m.tickN%2 == 0
 	now := time.Now()
 	var f flush
