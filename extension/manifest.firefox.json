@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "GoIDM Integration",
+  "version": "0.1.0",
+  "description": "Send browser downloads to GoIDM, the desktop download manager.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "goidm@go-idm",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": { "required": ["none"] }
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["downloads", "nativeMessaging", "cookies", "contextMenus", "storage"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "scripts": ["background.js"], "type": "module" },
+  "action": {
+    "default_title": "GoIDM",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "options_ui": { "page": "options.html", "open_in_tab": false }
+}

@@ -7,6 +7,7 @@
 
   let info = $state.raw<Integration | null>(null)
   let busy = $state(false)
+  let browser = $state<'chromium' | 'firefox'>('chromium')
 
   const registered = $derived(info?.browsers.some((b) => b.installed && b.current) ?? false)
   const stale = $derived(info?.browsers.some((b) => b.installed && !b.current) ?? false)
@@ -70,22 +71,60 @@
       {/each}
     </ul>
 
-    <ol class="list-decimal space-y-1 border-t border-border pt-3 pl-5 text-xs text-muted">
-      <li>Click <strong class="text-text">Install</strong> above.</li>
-      <li>
-        In your browser open <code class="selectable">chrome://extensions</code> and turn on Developer mode.
-      </li>
-      <li>
-        Choose <strong class="text-text">Load unpacked</strong> and select the
+    <div class="space-y-2 border-t border-border pt-3">
+      <div class="flex gap-1">
         <button
           type="button"
-          class="text-accent underline underline-offset-2"
-          disabled={!info.extensionFound}
-          onclick={() => api.revealExtension().catch((e) => toasts.error('Could not open folder', errMsg(e)))}
-          >extension folder</button
-        >.
-      </li>
-    </ol>
+          class="btn h-7 px-2 text-xs {browser === 'chromium' ? 'btn-primary' : 'btn-ghost'}"
+          onclick={() => (browser = 'chromium')}>Chrome, Edge, Brave</button
+        >
+        <button
+          type="button"
+          class="btn h-7 px-2 text-xs {browser === 'firefox' ? 'btn-primary' : 'btn-ghost'}"
+          onclick={() => (browser = 'firefox')}>Firefox</button
+        >
+      </div>
+
+      {#if browser === 'chromium'}
+        <ol class="list-decimal space-y-1 pl-5 text-xs text-muted">
+          <li>Click <strong class="text-text">Install</strong> above.</li>
+          <li>
+            In your browser open <code class="selectable">chrome://extensions</code> and turn on Developer mode.
+          </li>
+          <li>
+            Choose <strong class="text-text">Load unpacked</strong> and select the
+            <button
+              type="button"
+              class="text-accent underline underline-offset-2"
+              disabled={!info.extensionFound}
+              onclick={() => api.revealExtension().catch((e) => toasts.error('Could not open folder', errMsg(e)))}
+              >extension folder</button
+            >.
+          </li>
+        </ol>
+      {:else}
+        <ol class="list-decimal space-y-1 pl-5 text-xs text-muted">
+          <li>Click <strong class="text-text">Install</strong> above.</li>
+          <li>In Firefox open <code class="selectable">about:debugging#/runtime/this-firefox</code>.</li>
+          <li>
+            Choose <strong class="text-text">Load Temporary Add-on</strong> and select
+            <code class="selectable">manifest.json</code> in the
+            <button
+              type="button"
+              class="text-accent underline underline-offset-2"
+              disabled={!info.firefoxExtensionFound}
+              onclick={() =>
+                api.revealFirefoxExtension().catch((e) => toasts.error('Could not open folder', errMsg(e)))}
+              >Firefox extension folder</button
+            >.
+          </li>
+        </ol>
+        <p class="pl-5 text-xs text-faint">
+          A temporary add-on is removed when Firefox closes. For a permanent install the extension must be signed at
+          addons.mozilla.org (see extension/README.md).
+        </p>
+      {/if}
+    </div>
 
     {#if registered || stale}
       <div class="flex justify-end">

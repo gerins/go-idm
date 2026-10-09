@@ -24,6 +24,7 @@ export const api = {
   installIntegration: () => App.InstallIntegration().then((v) => as<Integration>(v)),
   removeIntegration: () => App.RemoveIntegration().then((v) => as<Integration>(v)),
   revealExtension: () => App.RevealExtensionFolder(),
+  revealFirefoxExtension: () => App.RevealFirefoxExtension(),
   chooseFolder: (current: string) => App.ChooseFolder(current),
 }
 

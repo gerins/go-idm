@@ -9,12 +9,27 @@ import (
 )
 
 type target struct {
-	name string
-	root string // the browser's profile root; its existence means the browser is installed
+	name    string
+	root    string // the browser's profile root; its existence means the browser is installed
+	dir     string // where it looks for host manifests; defaults to root/NativeMessagingHosts
+	firefox bool   // uses Firefox's manifest format
 }
 
-func (t target) hostDir() string      { return filepath.Join(t.root, "NativeMessagingHosts") }
+func (t target) hostDir() string {
+	if t.dir != "" {
+		return t.dir
+	}
+	return filepath.Join(t.root, "NativeMessagingHosts")
+}
+
 func (t target) manifestPath() string { return filepath.Join(t.hostDir(), HostName+".json") }
+
+func (t target) manifest(hostPath string, extensionIDs []string) ([]byte, error) {
+	if t.firefox {
+		return FirefoxManifest(hostPath)
+	}
+	return Manifest(hostPath, extensionIDs...)
+}
 
 func targets() []target {
 	home, err := os.UserHomeDir()
@@ -24,29 +39,28 @@ func targets() []target {
 	if runtime.GOOS == "darwin" {
 		base := filepath.Join(home, "Library", "Application Support")
 		return []target{
-			{"Google Chrome", filepath.Join(base, "Google", "Chrome")},
-			{"Chromium", filepath.Join(base, "Chromium")},
-			{"Microsoft Edge", filepath.Join(base, "Microsoft Edge")},
-			{"Brave", filepath.Join(base, "BraveSoftware", "Brave-Browser")},
+			{name: "Google Chrome", root: filepath.Join(base, "Google", "Chrome")},
+			{name: "Chromium", root: filepath.Join(base, "Chromium")},
+			{name: "Microsoft Edge", root: filepath.Join(base, "Microsoft Edge")},
+			{name: "Brave", root: filepath.Join(base, "BraveSoftware", "Brave-Browser")},
+			{name: "Firefox", root: filepath.Join(base, "Firefox"), dir: filepath.Join(base, "Mozilla", "NativeMessagingHosts"), firefox: true},
 		}
 	}
 	base := filepath.Join(home, ".config")
 	return []target{
-		{"Google Chrome", filepath.Join(base, "google-chrome")},
-		{"Chromium", filepath.Join(base, "chromium")},
-		{"Microsoft Edge", filepath.Join(base, "microsoft-edge")},
-		{"Brave", filepath.Join(base, "BraveSoftware", "Brave-Browser")},
+		{name: "Google Chrome", root: filepath.Join(base, "google-chrome")},
+		{name: "Chromium", root: filepath.Join(base, "chromium")},
+		{name: "Microsoft Edge", root: filepath.Join(base, "microsoft-edge")},
+		{name: "Brave", root: filepath.Join(base, "BraveSoftware", "Brave-Browser")},
+		{name: "Firefox", root: filepath.Join(home, ".mozilla"), dir: filepath.Join(home, ".mozilla", "native-messaging-hosts"), firefox: true},
 	}
 }
 
-// Install registers the host with every installed Chromium-based browser (or
-// with Chrome if none is found yet) and returns their names. dataDir is
+// Install registers the host with every installed browser (or with Chrome if
+// none is found yet) and returns their names. extensionIDs are the Chromium
+// extension IDs to allow; Firefox always allows FirefoxExtensionID. dataDir is
 // unused on this platform.
 func Install(hostPath, dataDir string, extensionIDs ...string) ([]string, error) {
-	data, err := Manifest(hostPath, extensionIDs...)
-	if err != nil {
-		return nil, err
-	}
 	all := targets()
 	var chosen []target
 	for _, t := range all {
@@ -59,6 +73,10 @@ func Install(hostPath, dataDir string, extensionIDs ...string) ([]string, error)
 	}
 	var names []string
 	for _, t := range chosen {
+		data, err := t.manifest(hostPath, extensionIDs)
+		if err != nil {
+			return names, err
+		}
 		if err := os.MkdirAll(t.hostDir(), 0o755); err != nil {
 			return names, err
 		}

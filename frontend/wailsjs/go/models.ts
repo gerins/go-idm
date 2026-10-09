@@ -187,6 +187,9 @@ export namespace main {
 	    extensionId: string;
 	    extensionDir: string;
 	    extensionFound: boolean;
+	    firefoxExtensionId: string;
+	    firefoxExtensionDir: string;
+	    firefoxExtensionFound: boolean;
 	    browsers: nativehost.BrowserStatus[];
 	
 	    static createFrom(source: any = {}) {
@@ -200,6 +203,9 @@ export namespace main {
 	        this.extensionId = source["extensionId"];
 	        this.extensionDir = source["extensionDir"];
 	        this.extensionFound = source["extensionFound"];
+	        this.firefoxExtensionId = source["firefoxExtensionId"];
+	        this.firefoxExtensionDir = source["firefoxExtensionDir"];
+	        this.firefoxExtensionFound = source["firefoxExtensionFound"];
 	        this.browsers = this.convertValues(source["browsers"], nativehost.BrowserStatus);
 	    }
 	

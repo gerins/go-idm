@@ -12,12 +12,17 @@ import (
 
 // Integration describes the state of the browser extension setup.
 type Integration struct {
-	HostPath       string                     `json:"hostPath"`
-	HostFound      bool                       `json:"hostFound"`
-	ExtensionID    string                     `json:"extensionId"`
-	ExtensionDir   string                     `json:"extensionDir"`
-	ExtensionFound bool                       `json:"extensionFound"`
-	Browsers       []nativehost.BrowserStatus `json:"browsers"`
+	HostPath       string `json:"hostPath"`
+	HostFound      bool   `json:"hostFound"`
+	ExtensionID    string `json:"extensionId"`
+	ExtensionDir   string `json:"extensionDir"`
+	ExtensionFound bool   `json:"extensionFound"`
+
+	FirefoxExtensionID    string `json:"firefoxExtensionId"`
+	FirefoxExtensionDir   string `json:"firefoxExtensionDir"`
+	FirefoxExtensionFound bool   `json:"firefoxExtensionFound"`
+
+	Browsers []nativehost.BrowserStatus `json:"browsers"`
 }
 
 func hostBinaryName() string {
@@ -70,41 +75,54 @@ func findHost() (string, bool) {
 	return filepath.Join(dir, hostBinaryName()), false
 }
 
-// findExtension locates the bundled extension folder.
-func findExtension() (string, bool) {
+// Folder names of the bundled extensions; the Firefox one is the same code
+// with the Firefox manifest.
+const (
+	chromeExtensionDir  = "extension"
+	firefoxExtensionDir = "extension-firefox"
+)
+
+// findExtension locates a bundled extension folder by name.
+func findExtension(name string) (string, bool) {
 	self, err := os.Executable()
 	if err != nil {
 		return "", false
 	}
 	dir := filepath.Dir(self)
 	candidates := []string{
-		filepath.Join(dir, "extension"),
-		filepath.Join(dir, "..", "Resources", "extension"), // macOS app bundle
+		filepath.Join(dir, name),
+		filepath.Join(dir, "..", "Resources", name), // macOS app bundle
 	}
 	for _, d := range ancestors(dir, 6) {
-		candidates = append(candidates, filepath.Join(d, "extension"))
+		candidates = append(candidates, filepath.Join(d, name))
 	}
 	if cwd, err := os.Getwd(); err == nil {
-		candidates = append(candidates, filepath.Join(cwd, "extension"))
+		candidates = append(candidates, filepath.Join(cwd, name))
 	}
 	for _, c := range candidates {
 		if isFile(filepath.Join(c, "manifest.json")) {
 			return filepath.Clean(c), true
 		}
 	}
-	return filepath.Join(dir, "extension"), false
+	return filepath.Join(dir, name), false
 }
 
 func integrationStatus() Integration {
 	host, hostOK := findHost()
-	ext, extOK := findExtension()
+	ext, extOK := findExtension(chromeExtensionDir)
+	ffExt, ffExtOK := findExtension(firefoxExtensionDir)
 	return Integration{
 		HostPath:       host,
 		HostFound:      hostOK,
 		ExtensionID:    nativehost.ExtensionID,
 		ExtensionDir:   ext,
 		ExtensionFound: extOK,
-		Browsers:       nativehost.Status(host),
+
+		FirefoxExtensionID:    nativehost.FirefoxExtensionID,
+		FirefoxExtensionDir:   ffExt,
+		FirefoxExtensionFound: ffExtOK,
+
+		Browsers: nativehost.Status(host),
 	}
 }
 
@@ -139,12 +157,18 @@ func (a *App) RemoveIntegration() (Integration, error) {
 	return integrationStatus(), nil
 }
 
-// RevealExtensionFolder shows the extension folder so it can be loaded into
-// the browser with "Load unpacked".
-func (a *App) RevealExtensionFolder() error {
-	dir, ok := findExtension()
+// RevealExtensionFolder shows the Chromium extension folder so it can be
+// loaded into the browser with "Load unpacked".
+func (a *App) RevealExtensionFolder() error { return revealExtension(chromeExtensionDir) }
+
+// RevealFirefoxExtension shows the Firefox extension folder so its manifest.json
+// can be picked in about:debugging ("Load Temporary Add-on").
+func (a *App) RevealFirefoxExtension() error { return revealExtension(firefoxExtensionDir) }
+
+func revealExtension(name string) error {
+	dir, ok := findExtension(name)
 	if !ok {
-		return fmt.Errorf("extension folder not found")
+		return fmt.Errorf("%s folder not found", name)
 	}
 	return revealPath(filepath.Join(dir, "manifest.json"))
 }

@@ -1,5 +1,6 @@
 import { send, describeError } from './lib/native.js'
 import { getSettings, saveSettings } from './lib/settings.js'
+import { ext } from './lib/api.js'
 
 const $ = (id) => document.getElementById(id)
 
@@ -23,7 +24,7 @@ async function init() {
   $('enabled').checked = settings.enabled
   $('enabled').addEventListener('change', (e) => saveSettings({ enabled: e.target.checked }))
 
-  $('options').addEventListener('click', () => chrome.runtime.openOptionsPage())
+  $('options').addEventListener('click', () => ext.runtime.openOptionsPage())
   $('open').addEventListener('click', async () => {
     const res = await send({ type: 'show' })
     if (res.ok) window.close()
@@ -31,9 +32,9 @@ async function init() {
   })
 
   // Opening the popup acknowledges any earlier hand-off error.
-  chrome.action.getBadgeText({}, (text) => {
-    if (text === '!') chrome.action.setBadgeText({ text: settings.enabled ? '' : 'OFF' })
-  })
+  if ((await ext.action.getBadgeText({})) === '!') {
+    await ext.action.setBadgeText({ text: settings.enabled ? '' : 'OFF' })
+  }
 
   await check()
 }

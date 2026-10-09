@@ -12,7 +12,7 @@ A desktop download manager written in Go (engine) with a Svelte UI, packaged wit
 - Sorting into Video, Music, Documents and other folders
 - Clipboard link watcher, paste (Ctrl+V) and drag-and-drop of links
 - Light and dark themes following the OS
-- Chrome/Edge/Brave extension that captures browser downloads (with cookies and referrer) and hands them to the app, see [extension/README.md](extension/README.md)
+- Chrome/Edge/Brave/Firefox extension that captures browser downloads (with cookies and referrer) and hands them to the app, see [extension/README.md](extension/README.md)
 
 ## Layout
 
@@ -24,7 +24,7 @@ internal/ipc      authenticated loopback channel between the browser host and th
 internal/nativehost  native messaging protocol and browser registration
 cmd/idm-cli       headless CLI built on the same engine
 cmd/idm-host      native messaging host the browser launches
-extension/        Manifest V3 browser extension
+extension/        Manifest V3 browser extension (Chromium and Firefox)
 app.go, main.go   Wails bindings and window setup
 frontend/         Svelte 5 + TypeScript + Tailwind v4 UI
 ```
@@ -42,6 +42,8 @@ make build           # production build for the current OS
 make build-windows   # cross-compile build/bin/goidm.exe
 make build-cli       # headless CLI into build/bin/idm-cli
 make build-host      # native host into build/bin (make dev does this for you)
+make build-firefox-extension  # Firefox extension folder into build/bin/extension-firefox
+make firefox-zip     # zip it for signing at addons.mozilla.org
 make ext-test        # browser extension unit tests
 ```
 
@@ -52,5 +54,5 @@ CLI: `make cli ARGS="-o ./out -c 8 https://example.com/file.zip"`
 
 ## Not yet implemented
 
-System tray and native notifications (needs Wails v3 or a tray library), Firefox support, scheduler,
+System tray and native notifications (needs Wails v3 or a tray library), scheduler,
 HLS/DASH, checksum verification, queue reordering.

@@ -1,6 +1,6 @@
 # GoIDM browser extension
 
-Chrome, Edge, Brave and other Chromium browsers (Manifest V3). It hands downloads to the GoIDM desktop app, together with the browser's cookies, referrer and user agent, so links that only work in a logged-in browser still download.
+Chrome, Edge, Brave and other Chromium browsers, and Firefox 128+ (Manifest V3). It hands downloads to the GoIDM desktop app, together with the browser's cookies, referrer and user agent, so links that only work in a logged-in browser still download.
 
 ```
 browser ── extension ──native messaging──▶ idm-host ──local HTTP + token──▶ GoIDM app
@@ -13,6 +13,17 @@ browser ── extension ──native messaging──▶ idm-host ──local HT
 3. In the browser open `chrome://extensions`, enable **Developer mode**, click **Load unpacked** and pick this folder (GoIDM's settings page has a link that reveals it).
 
 The extension ID is fixed by the `key` in `manifest.json` (`bopmpbnmogfmiheanjbjeiiddkobbmng`), which is what the native host manifest allows. Reloading or moving the folder does not change it.
+
+### Firefox
+
+Firefox needs a different manifest (`manifest.firefox.json`: background scripts instead of a service worker, and a gecko ID), so the build produces a second folder, `extension-firefox/`, next to `extension/`.
+
+1. Build GoIDM (`make build`, or `make build-firefox-extension` for just the folder) and click **Install** in **Settings, Browser integration**. This also registers the native host with Firefox (`~/.mozilla/native-messaging-hosts` on Linux, `~/Library/Application Support/Mozilla/NativeMessagingHosts` on macOS, `HKCU\Software\Mozilla\NativeMessagingHosts` on Windows).
+2. In Firefox open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…** and pick `manifest.json` in `extension-firefox/`.
+
+A temporary add-on is removed when Firefox closes. To keep it permanently, run `make firefox-zip` and submit `build/bin/goidm-firefox.zip` at [addons.mozilla.org](https://addons.mozilla.org/developers/) (choose **On your own** to get a signed `.xpi` without listing it), then install the signed file. Firefox Developer Edition and Nightly can instead load unsigned add-ons with `xpinstall.signatures.required` set to `false`.
+
+The add-on ID `goidm@go-idm` is fixed in `manifest.firefox.json` and is what the native host manifest allows. It is not supported in Snap or Flatpak builds of Firefox, whose sandbox cannot reach the native host.
 
 ## What it does
 
@@ -30,14 +41,16 @@ Cookies are read only for the URL being downloaded and are sent only to the GoID
 ## Limits
 
 - Downloads that cannot be replayed with a plain GET (POST forms, `blob:` URLs) stay in the browser.
-- Firefox is not supported (it needs a different host manifest).
-- If you publish the extension to a store, the store assigns its own ID. Pass that ID to `nativehost.Install` so the host allows it.
+- Firefox: cookies are read from the default cookie store, so downloads from a container tab are sent without that container's cookies.
+- If you publish the Chromium extension to a store, the store assigns its own ID. Pass that ID to `nativehost.Install` so the host allows it. The Firefox ID is the one in `manifest.firefox.json`, so signing keeps it.
 
 ## Develop
 
 ```bash
-make ext-test        # unit tests for the capture logic (node --test)
+make ext-test        # unit tests for the capture logic and manifests (node --test)
 cd extension && go run icons/gen.go   # regenerate icons
 ```
 
-After editing, press the reload button on `chrome://extensions`. Service worker logs are under **Inspect views: service worker**.
+After editing, press the reload button on `chrome://extensions` (or **Reload** under the add-on in `about:debugging`; run `make build-firefox-extension` first to refresh the Firefox folder). Service worker logs are under **Inspect views: service worker**, or **Inspect** in `about:debugging` for Firefox.
+
+The code calls the browser through `lib/api.js` (`browser` on Firefox, `chrome` elsewhere) and only uses promises, so the same files run on both. Keep `manifest.firefox.json` in step with `manifest.json`; `make ext-test` checks they agree on permissions and UI.

@@ -76,6 +76,9 @@ export interface Integration {
   extensionId: string
   extensionDir: string
   extensionFound: boolean
+  firefoxExtensionId: string
+  firefoxExtensionDir: string
+  firefoxExtensionFound: boolean
   browsers: BrowserStatus[]
 }
 

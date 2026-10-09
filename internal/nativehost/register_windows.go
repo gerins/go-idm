@@ -10,37 +10,51 @@ import (
 )
 
 type target struct {
-	name string
-	key  string // under HKEY_CURRENT_USER
+	name    string
+	key     string // under HKEY_CURRENT_USER
+	firefox bool   // uses Firefox's manifest format
 }
 
 func targets() []target {
 	return []target{
-		{"Google Chrome", `Software\Google\Chrome\NativeMessagingHosts\` + HostName},
-		{"Chromium", `Software\Chromium\NativeMessagingHosts\` + HostName},
-		{"Microsoft Edge", `Software\Microsoft\Edge\NativeMessagingHosts\` + HostName},
-		{"Brave", `Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\` + HostName},
+		{name: "Google Chrome", key: `Software\Google\Chrome\NativeMessagingHosts\` + HostName},
+		{name: "Chromium", key: `Software\Chromium\NativeMessagingHosts\` + HostName},
+		{name: "Microsoft Edge", key: `Software\Microsoft\Edge\NativeMessagingHosts\` + HostName},
+		{name: "Brave", key: `Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\` + HostName},
+		{name: "Firefox", key: `Software\Mozilla\NativeMessagingHosts\` + HostName, firefox: true},
 	}
 }
 
-func manifestFile(dataDir string) string {
-	return filepath.Join(dataDir, "native-messaging", HostName+".json")
+// manifestFile is where a browser family's manifest lives. Firefox needs its
+// own file because its manifest format differs from Chromium's.
+func manifestFile(dataDir string, firefox bool) string {
+	name := HostName + ".json"
+	if firefox {
+		name = HostName + ".firefox.json"
+	}
+	return filepath.Join(dataDir, "native-messaging", name)
 }
 
-// Install writes the manifest into dataDir and points each browser's
-// per-user registry key at it. Registry keys for browsers that are not
-// installed are harmless.
+// Install writes the manifests into dataDir and points each browser's
+// per-user registry key at the right one. Registry keys for browsers that are
+// not installed are harmless. extensionIDs are the Chromium extension IDs to
+// allow; Firefox always allows FirefoxExtensionID.
 func Install(hostPath, dataDir string, extensionIDs ...string) ([]string, error) {
-	data, err := Manifest(hostPath, extensionIDs...)
+	chromium, err := Manifest(hostPath, extensionIDs...)
 	if err != nil {
 		return nil, err
 	}
-	file := manifestFile(dataDir)
-	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+	firefox, err := FirefoxManifest(hostPath)
+	if err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(file, data, 0o644); err != nil {
+	if err := os.MkdirAll(filepath.Join(dataDir, "native-messaging"), 0o755); err != nil {
 		return nil, err
+	}
+	for isFirefox, data := range map[bool][]byte{false: chromium, true: firefox} {
+		if err := os.WriteFile(manifestFile(dataDir, isFirefox), data, 0o644); err != nil {
+			return nil, err
+		}
 	}
 	var names []string
 	for _, t := range targets() {
@@ -48,7 +62,7 @@ func Install(hostPath, dataDir string, extensionIDs ...string) ([]string, error)
 		if err != nil {
 			return names, err
 		}
-		err = k.SetStringValue("", file)
+		err = k.SetStringValue("", manifestFile(dataDir, t.firefox))
 		k.Close()
 		if err != nil {
 			return names, err
@@ -58,15 +72,17 @@ func Install(hostPath, dataDir string, extensionIDs ...string) ([]string, error)
 	return names, nil
 }
 
-// Uninstall removes the registry keys and the manifest file.
+// Uninstall removes the registry keys and the manifest files.
 func Uninstall(dataDir string) error {
 	for _, t := range targets() {
 		if err := registry.DeleteKey(registry.CURRENT_USER, t.key); err != nil && err != registry.ErrNotExist {
 			return err
 		}
 	}
-	if err := os.Remove(manifestFile(dataDir)); err != nil && !os.IsNotExist(err) {
-		return err
+	for _, firefox := range []bool{false, true} {
+		if err := os.Remove(manifestFile(dataDir, firefox)); err != nil && !os.IsNotExist(err) {
+			return err
+		}
 	}
 	return nil
 }

@@ -77,3 +77,11 @@ test('native error classification', () => {
   assert.equal(classifyError('Access to the specified native messaging host is forbidden.'), 'host_forbidden')
   assert.equal(classifyError('Native host has exited.'), 'host_exited')
 })
+
+test('native error classification, Firefox wording', () => {
+  assert.equal(classifyError('No such native application com.goidm.host'), 'host_not_installed')
+  assert.equal(
+    classifyError('This extension does not have permission to use native application com.goidm.host'),
+    'host_forbidden',
+  )
+})

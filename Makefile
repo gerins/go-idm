@@ -11,7 +11,14 @@ UNAME := $(shell uname -s)
 # Copies the extension without dev-only files: $(call copy-extension,<dest>)
 define copy-extension
 	rm -rf $(1) && mkdir -p $(dir $(1)) && cp -R extension $(1)
-	rm -rf $(1)/test $(1)/package.json $(1)/icons/gen.go
+	rm -rf $(1)/test $(1)/package.json $(1)/icons/gen.go $(1)/manifest.firefox.json
+endef
+
+# Same files, but with the Firefox manifest as manifest.json: $(call copy-firefox-extension,<dest>)
+define copy-firefox-extension
+	rm -rf $(1) && mkdir -p $(dir $(1)) && cp -R extension $(1)
+	rm -rf $(1)/test $(1)/package.json $(1)/icons/gen.go $(1)/manifest.json
+	mv $(1)/manifest.firefox.json $(1)/manifest.json
 endef
 
 .PHONY: help
@@ -21,7 +28,7 @@ help: ## Show this help
 ##@ Run
 
 .PHONY: dev
-dev: build-host ## Run the app with live reload (UI also at http://localhost:34115)
+dev: build-host build-firefox-extension ## Run the app with live reload (UI also at http://localhost:34115)
 	$(WAILS) dev
 
 .PHONY: cli
@@ -40,16 +47,19 @@ bundle-extras:
 ifeq ($(UNAME),Darwin)
 	go build -o $(BIN)/GoIDM.app/Contents/MacOS/idm-host ./cmd/idm-host
 	$(call copy-extension,$(BIN)/GoIDM.app/Contents/Resources/extension)
+	$(call copy-firefox-extension,$(BIN)/GoIDM.app/Contents/Resources/extension-firefox)
 else
 	go build -o $(BIN)/idm-host ./cmd/idm-host
 	$(call copy-extension,$(BIN)/extension)
+	$(call copy-firefox-extension,$(BIN)/extension-firefox)
 endif
 
 .PHONY: build-windows
-build-windows: ## Cross-compile for Windows (goidm.exe, idm-host.exe and extension/ in build/bin)
+build-windows: ## Cross-compile for Windows (goidm.exe, idm-host.exe, extension/ and extension-firefox/ in build/bin)
 	$(WAILS) build -platform windows/amd64
 	GOOS=windows GOARCH=amd64 go build -o $(BIN)/idm-host.exe ./cmd/idm-host
 	$(call copy-extension,$(BIN)/extension)
+	$(call copy-firefox-extension,$(BIN)/extension-firefox)
 
 .PHONY: build-host
 build-host: ## Build the native messaging host to build/bin/idm-host (used by make dev)
@@ -58,6 +68,15 @@ build-host: ## Build the native messaging host to build/bin/idm-host (used by ma
 .PHONY: build-windows-installer
 build-windows-installer: build-windows ## Windows NSIS installer (needs NSIS installed)
 	$(WAILS) build -platform windows/amd64 -nsis
+
+.PHONY: build-firefox-extension
+build-firefox-extension: ## Build the Firefox extension folder into build/bin/extension-firefox
+	$(call copy-firefox-extension,$(BIN)/extension-firefox)
+
+.PHONY: firefox-zip
+firefox-zip: build-firefox-extension ## Zip the Firefox extension (build/bin/goidm-firefox.zip) for signing at addons.mozilla.org
+	rm -f $(BIN)/goidm-firefox.zip
+	cd $(BIN)/extension-firefox && zip -qr ../goidm-firefox.zip .
 
 .PHONY: build-cli
 build-cli: ## Build the headless CLI into build/bin/idm-cli
@@ -74,7 +93,7 @@ test: ## Run Go tests with the race detector
 
 .PHONY: ext-test
 ext-test: ## Unit-test the browser extension logic (needs Node)
-	cd extension && node --test test/
+	cd extension && node --test test/*.test.js
 
 .PHONY: check
 check: fmt-check vet frontend-check ext-test test ## Everything CI would run

@@ -1,5 +1,6 @@
 import { parseHostList } from './lib/capture.js'
 import { getSettings, saveSettings } from './lib/settings.js'
+import { ext } from './lib/api.js'
 
 const $ = (id) => document.getElementById(id)
 let timer
@@ -20,7 +21,7 @@ async function init() {
   const s = await getSettings()
   $('minSize').value = s.minSizeMB
   $('excluded').value = s.excludedHosts.join('\n')
-  $('extId').textContent = chrome.runtime.id
+  $('extId').textContent = ext.runtime.id
 
   let debounce
   const later = () => {

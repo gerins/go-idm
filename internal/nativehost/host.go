@@ -1,6 +1,6 @@
 // Package nativehost implements the browser side of GoIDM: the native
 // messaging protocol spoken by the host process, and registration of that
-// host with Chromium-based browsers.
+// host with Chromium-based browsers and Firefox.
 package nativehost
 
 import (
@@ -21,6 +21,11 @@ const HostName = "com.goidm.host"
 // ExtensionID is the ID of the bundled extension. It is derived from the
 // public key in extension/manifest.json (see TestExtensionIDMatchesManifest).
 const ExtensionID = "bopmpbnmogfmiheanjbjeiiddkobbmng"
+
+// FirefoxExtensionID is the gecko ID of the Firefox build of the extension. It
+// must match browser_specific_settings.gecko.id in extension/manifest.firefox.json
+// (see TestFirefoxExtensionIDMatchesManifest).
+const FirefoxExtensionID = "goidm@go-idm"
 
 // Error codes returned to the extension in Response.Error.
 const (

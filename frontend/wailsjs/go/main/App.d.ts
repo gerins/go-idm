@@ -35,6 +35,8 @@ export function ResumeDownload(arg1:string):Promise<void>;
 
 export function RevealExtensionFolder():Promise<void>;
 
+export function RevealFirefoxExtension():Promise<void>;
+
 export function SaveConfig(arg1:engine.Config):Promise<engine.Config>;
 
 export function ShowInFolder(arg1:string):Promise<void>;

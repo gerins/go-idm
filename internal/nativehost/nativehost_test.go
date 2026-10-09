@@ -237,3 +237,44 @@ func TestExtensionIDMatchesManifest(t *testing.T) {
 		t.Fatalf("ExtensionID = %s, but extension/manifest.json key yields %s", ExtensionID, id)
 	}
 }
+
+func TestFirefoxManifest(t *testing.T) {
+	data, err := FirefoxManifest("/opt/goidm/idm-host")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m manifest
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatal(err)
+	}
+	if m.Name != HostName || m.Type != "stdio" || m.Path != "/opt/goidm/idm-host" ||
+		len(m.AllowedExts) != 1 || m.AllowedExts[0] != FirefoxExtensionID || len(m.AllowedOrigins) != 0 {
+		t.Errorf("manifest = %+v", m)
+	}
+	if bytes.Contains(data, []byte("allowed_origins")) {
+		t.Errorf("Firefox rejects allowed_origins:\n%s", data)
+	}
+	if _, err := FirefoxManifest("relative/host"); err == nil {
+		t.Error("relative host path must be rejected")
+	}
+}
+
+func TestFirefoxExtensionIDMatchesManifest(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "extension", "manifest.firefox.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m struct {
+		Settings struct {
+			Gecko struct {
+				ID string `json:"id"`
+			} `json:"gecko"`
+		} `json:"browser_specific_settings"`
+	}
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	if m.Settings.Gecko.ID != FirefoxExtensionID {
+		t.Fatalf("FirefoxExtensionID = %s, but extension/manifest.firefox.json has %q", FirefoxExtensionID, m.Settings.Gecko.ID)
+	}
+}

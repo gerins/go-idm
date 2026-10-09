@@ -66,6 +66,10 @@ export function RevealExtensionFolder() {
   return window['go']['main']['App']['RevealExtensionFolder']();
 }
 
+export function RevealFirefoxExtension() {
+  return window['go']['main']['App']['RevealFirefoxExtension']();
+}
+
 export function SaveConfig(arg1) {
   return window['go']['main']['App']['SaveConfig'](arg1);
 }
