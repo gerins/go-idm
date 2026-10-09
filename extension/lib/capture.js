@@ -68,17 +68,24 @@ function webUrl(raw) {
 
 /**
  * The page a download was started from, to reopen later. The referrer is that
- * page, but browsers usually cut it to the bare origin for cross-site links; in
- * that case the active tab's URL is better when it is on the same site.
+ * page, but browsers usually cut it to the bare origin when the file comes from
+ * another host (the default referrer policy). Then the real page is probably
+ * still open, so use the URL of an open tab on the same site: the active one if
+ * there is one (the download may have opened its own tab, so it often is not),
+ * else the most recently used. `tabs` are objects with url, active, lastAccessed.
  * Returns '' when there is no usable page.
  */
-export function pickPageUrl(referrer, tabUrl) {
+export function pickPageUrl(referrer, tabs = []) {
   const ref = webUrl(referrer)
   if (!ref) return ''
-  const tab = webUrl(tabUrl)
   const originOnly = ref.pathname === '/' && !ref.search && !ref.hash
-  if (originOnly && tab && tab.origin === ref.origin) return tab.href
-  return ref.href
+  if (!originOnly) return ref.href
+
+  const sameSite = tabs
+    .map((t) => ({ url: webUrl(t.url), active: !!t.active, used: t.lastAccessed ?? 0 }))
+    .filter((t) => t.url && t.url.origin === ref.origin)
+    .sort((a, b) => b.used - a.used || Number(b.active) - Number(a.active))
+  return sameSite[0]?.url.href ?? ref.href
 }
 
 /** "a=1; b=2" from chrome.cookies.Cookie objects. */

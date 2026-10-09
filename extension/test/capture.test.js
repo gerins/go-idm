@@ -88,20 +88,43 @@ test('native error classification, Firefox wording', () => {
 })
 
 test('page url: a full referrer is the page', () => {
-  assert.equal(pickPageUrl('https://site.example/dl/page?id=3', 'https://site.example/other'), 'https://site.example/dl/page?id=3')
+  assert.equal(
+    pickPageUrl('https://site.example/dl/page?id=3', [{ url: 'https://site.example/other', active: true }]),
+    'https://site.example/dl/page?id=3',
+  )
 })
 
-test('page url: an origin-only referrer is upgraded to the same-site active tab', () => {
-  assert.equal(pickPageUrl('https://site.example/', 'https://site.example/dl/page'), 'https://site.example/dl/page')
-  assert.equal(pickPageUrl('https://site.example/', 'https://other.example/dl/page'), 'https://site.example/')
-  assert.equal(pickPageUrl('https://site.example/', ''), 'https://site.example/')
+test('page url: an origin-only referrer is upgraded to an open tab on the same site', () => {
+  const tab = (url, over = {}) => ({ url, active: false, lastAccessed: 0, ...over })
+  const tabs = [tab('https://site.example/dl/page', { lastAccessed: 5 }), tab('https://other.example/x', { lastAccessed: 9 })]
+  assert.equal(pickPageUrl('https://site.example/', tabs), 'https://site.example/dl/page')
+  assert.equal(pickPageUrl('https://site.example/', [tab('https://other.example/x')]), 'https://site.example/')
+  assert.equal(pickPageUrl('https://site.example/', []), 'https://site.example/')
+  assert.equal(pickPageUrl('https://site.example/'), 'https://site.example/')
+})
+
+test('page url: the file opening its own tab does not hide the page', () => {
+  // gofile.io: the page is in a background tab, the active tab is the file host.
+  const tabs = [
+    { url: 'https://gofile.io/d/G2T4JXGI', active: false, lastAccessed: 100 },
+    { url: 'https://store3.gofile.io/download/x/file.zip', active: true, lastAccessed: 200 },
+  ]
+  assert.equal(pickPageUrl('https://gofile.io/', tabs), 'https://gofile.io/d/G2T4JXGI')
+})
+
+test('page url: among same-site tabs the most recently used wins', () => {
+  const tabs = [
+    { url: 'https://site.example/old', lastAccessed: 1 },
+    { url: 'https://site.example/new', lastAccessed: 7 },
+  ]
+  assert.equal(pickPageUrl('https://site.example/', tabs), 'https://site.example/new')
 })
 
 test('page url: nothing usable gives an empty string', () => {
-  assert.equal(pickPageUrl('', 'https://site.example/page'), '')
+  assert.equal(pickPageUrl('', [{ url: 'https://site.example/page' }]), '')
   assert.equal(pickPageUrl(undefined, undefined), '')
-  assert.equal(pickPageUrl('about:blank', 'https://site.example/page'), '')
-  assert.equal(pickPageUrl('chrome://downloads', ''), '')
+  assert.equal(pickPageUrl('about:blank', [{ url: 'https://site.example/page' }]), '')
+  assert.equal(pickPageUrl('chrome://downloads', []), '')
 })
 
 test('add message carries the page url only when there is one', () => {
