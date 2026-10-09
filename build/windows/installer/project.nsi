@@ -96,6 +96,18 @@ Section
 
     !insertmacro wails.files
 
+    # The native messaging host the browsers launch, and the two extensions.
+    # They must stay next to the app: it finds them relative to its own path.
+    File "..\..\bin\idm-host.exe"
+
+    SetOutPath "$INSTDIR\extension"
+    File /r "..\..\bin\extension\*.*"
+
+    SetOutPath "$INSTDIR\extension-firefox"
+    File /r "..\..\bin\extension-firefox\*.*"
+
+    SetOutPath $INSTDIR
+
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 
@@ -109,6 +121,15 @@ Section "uninstall"
     !insertmacro wails.setShellContext
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
+
+    # Drop the browser registrations, which would otherwise point at files that
+    # no longer exist. The download database in %AppData%\GoIDM is kept.
+    DeleteRegKey HKCU "Software\Google\Chrome\NativeMessagingHosts\com.goidm.host"
+    DeleteRegKey HKCU "Software\Chromium\NativeMessagingHosts\com.goidm.host"
+    DeleteRegKey HKCU "Software\Microsoft\Edge\NativeMessagingHosts\com.goidm.host"
+    DeleteRegKey HKCU "Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\com.goidm.host"
+    DeleteRegKey HKCU "Software\Mozilla\NativeMessagingHosts\com.goidm.host"
+    RMDir /r "$AppData\GoIDM\native-messaging"
 
     RMDir /r $INSTDIR
 

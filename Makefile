@@ -66,7 +66,7 @@ build-host: ## Build the native messaging host to build/bin/idm-host (used by ma
 	go build -o $(BIN)/idm-host ./cmd/idm-host
 
 .PHONY: build-windows-installer
-build-windows-installer: build-windows ## Windows NSIS installer (needs NSIS installed)
+build-windows-installer: build-windows ## Windows NSIS installer with host and extensions (needs NSIS installed)
 	$(WAILS) build -platform windows/amd64 -nsis
 
 .PHONY: build-firefox-extension
