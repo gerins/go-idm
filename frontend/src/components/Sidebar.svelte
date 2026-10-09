@@ -4,6 +4,7 @@
   import { CATEGORIES } from '../lib/types'
   import { ui } from '../lib/ui.svelte'
   import Icon from './Icon.svelte'
+  import ThemeSwitch from './ThemeSwitch.svelte'
   import type { IconName } from './icons'
 
   const nav: { id: Filter; label: string; icon: IconName; count: () => number }[] = [
@@ -55,7 +56,8 @@
     {/each}
   </nav>
 
-  <div class="border-t border-border p-2.5">
+  <div class="space-y-2 border-t border-border p-2.5">
+    <ThemeSwitch />
     <button class="btn btn-ghost w-full justify-start" onclick={() => (ui.settingsOpen = true)}>
       <Icon name="sliders" size={16} /> Settings
     </button>

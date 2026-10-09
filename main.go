@@ -40,7 +40,7 @@ func main() {
 			},
 		},
 		Windows: &windows.Options{
-			Theme: windows.Dark,
+			Theme: windows.SystemDefault,
 		},
 		Bind: []interface{}{app},
 	})

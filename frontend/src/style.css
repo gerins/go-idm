@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 
-:root {
+:root,
+:root[data-theme='dark'] {
   color-scheme: dark;
   --bg: #0f1117;
   --surface: #151821;
@@ -19,25 +20,25 @@
   --shadow: 0 18px 50px rgb(0 0 0 / 0.5);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color-scheme: light;
-    --bg: #f5f6fb;
-    --surface: #ffffff;
-    --surface-2: #f0f2f8;
-    --surface-3: #e5e8f1;
-    --border: #e0e3ee;
-    --text: #151827;
-    --muted: #596079;
-    --faint: #8a91a8;
-    --accent: #3a66f0;
-    --accent-soft: rgb(58 102 240 / 0.1);
-    --accent-fg: #ffffff;
-    --success: #0f9f6e;
-    --warn: #b7791f;
-    --danger: #d64545;
-    --shadow: 0 18px 50px rgb(20 24 50 / 0.18);
-  }
+/* The theme module always resolves "system" to light or dark and sets
+   data-theme, so no prefers-color-scheme media query is needed here. */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f5f6fb;
+  --surface: #ffffff;
+  --surface-2: #f0f2f8;
+  --surface-3: #e5e8f1;
+  --border: #e0e3ee;
+  --text: #151827;
+  --muted: #596079;
+  --faint: #8a91a8;
+  --accent: #3a66f0;
+  --accent-soft: rgb(58 102 240 / 0.1);
+  --accent-fg: #ffffff;
+  --success: #0f9f6e;
+  --warn: #b7791f;
+  --danger: #d64545;
+  --shadow: 0 18px 50px rgb(20 24 50 / 0.18);
 }
 
 @theme inline {
