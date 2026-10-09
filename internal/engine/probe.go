@@ -23,6 +23,11 @@ type ProbeResult struct {
 	ETag         string `json:"etag"`
 	LastModified string `json:"lastModified"`
 	ContentType  string `json:"contentType"`
+
+	// Set for HLS streams (see hls.go).
+	HLS      bool         `json:"hls"`
+	Variants []HLSVariant `json:"variants"` // qualities, best first; empty for a single-quality stream
+	Duration float64      `json:"duration"` // seconds
 }
 
 // HTTPError is returned for unexpected HTTP status codes.

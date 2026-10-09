@@ -2,10 +2,10 @@
   import { api, errMsg } from '../lib/api'
   import { categoryFor, metaFor } from '../lib/category'
   import { downloads } from '../lib/downloads.svelte'
-  import { bytes, extractUrls } from '../lib/format'
+  import { bytes, clock, extractUrls } from '../lib/format'
   import { settings } from '../lib/settings.svelte'
   import { toasts } from '../lib/toasts.svelte'
-  import type { ProbeResult } from '../lib/types'
+  import type { HLSVariant, ProbeResult } from '../lib/types'
   import { ui } from '../lib/ui.svelte'
   import Icon from './Icon.svelte'
 
@@ -25,6 +25,8 @@
   let connections = $state(cfg?.connections ?? 8)
   let limitValue = $state('')
   let limitUnit = $state<'KB' | 'MB'>('KB')
+  // HLS streams offer several qualities; empty means the best one.
+  let variant = $state('')
   let startNow = $state(true)
   let advancedOpen = $state(false)
   // Headers captured from the browser (Referer, Cookie, User-Agent) prefill Advanced.
@@ -40,6 +42,13 @@
   )
   let submitting = $state(false)
   let error = $state('')
+
+  const variants = $derived(probe.state === 'ok' ? probe.r.variants : [])
+
+  function variantLabel(v: HLSVariant): string {
+    const size = v.height ? `${v.height}p` : 'Audio/unknown size'
+    return v.bandwidth ? `${size} · ${(v.bandwidth / 1e6).toFixed(1)} Mbps` : size
+  }
 
   const urls = $derived(extractUrls(text))
   const single = $derived(urls.length === 1)
@@ -88,6 +97,8 @@
     const hdrs = headers
     const mine = ++seq
     probe = { state: 'loading' }
+    variant = ''
+
     const timer = setTimeout(async () => {
       try {
         const r = await api.probe(url, hdrs)
@@ -126,6 +137,7 @@
           speedLimit: limit,
           headers,
           pageUrl: ui.addPageUrl,
+          variant: single ? variant : '',
           startPaused: !startNow,
         })
         added++
@@ -181,7 +193,11 @@
             <div class="min-w-0 flex-1">
               <div class="truncate font-medium">{fileName || probe.r.fileName}</div>
               <div class="text-xs text-muted">
-                {probe.r.size >= 0 ? bytes(probe.r.size) : 'Unknown size'} ·
+                {#if probe.r.hls}
+                  Streaming video{probe.r.duration > 0 ? ` · ${clock(probe.r.duration)}` : ''} ·
+                {:else}
+                  {probe.r.size >= 0 ? bytes(probe.r.size) : 'Unknown size'} ·
+                {/if}
                 {#if probe.r.resumable}
                   <span class="text-success">Supports pause &amp; resume</span>
                 {:else}
@@ -210,6 +226,16 @@
           <div class="text-muted">Paste a link to see details.</div>
         {/if}
       </div>
+
+      {#if variants.length > 1}
+        <div>
+          <label class="label" for="add-quality">Quality</label>
+          <select id="add-quality" class="field" bind:value={variant}>
+            <option value="">Best available ({variantLabel(variants[0])})</option>
+            {#each variants as v (v.url)}<option value={v.url}>{variantLabel(v)}</option>{/each}
+          </select>
+        </div>
+      {/if}
 
       <div>
         <label class="label" for="add-name">Save as</label>

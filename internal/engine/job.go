@@ -85,6 +85,8 @@ type job struct {
 	segs []Segment    // immutable plan: Start and End only
 	done []atomic.Int64
 
+	hls *hlsRun // set for HLS streams, which have their own progress model
+
 	url    string
 	file   *os.File
 	resume bool
@@ -95,6 +97,9 @@ type job struct {
 func (j *job) snapshot() (segs []Segment, ok bool) {
 	j.mu.RLock()
 	defer j.mu.RUnlock()
+	if j.hls != nil {
+		return j.hls.snapshot(), true
+	}
 	if j.segs == nil {
 		return nil, false
 	}
@@ -129,6 +134,10 @@ func (j *job) run(ctx context.Context) error {
 	res, err := j.probe(ctx)
 	if err != nil {
 		return err
+	}
+
+	if looksLikeHLS(res) {
+		return j.runHLS(ctx, res)
 	}
 
 	d := &j.d

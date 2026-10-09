@@ -2,6 +2,7 @@ import { send, describeError } from './lib/native.js'
 import { buildAddMessage, cookieHeader, knownSize, pickPageUrl, shouldCapture } from './lib/capture.js'
 import { getSettings } from './lib/settings.js'
 import { ext } from './lib/api.js'
+import { analyzePlaylist } from './lib/hls.js'
 import { classifyMedia } from './lib/media.js'
 import { clearMedia, getMedia, recordMedia } from './lib/mediastore.js'
 
@@ -134,8 +135,33 @@ ext.webRequest.onHeadersReceived.addListener(
   ['responseHeaders'],
 )
 
-async function onMediaFound(tabId, item) {
+// Playlists already looked at in this run, so a player re-fetching one every few
+// seconds doesn't make us do the same.
+const seenPlaylists = new Set()
+
+// An HLS playlist is only listed if GoIDM can download it: not live, not DRM.
+async function checkPlaylist(item) {
+  if (seenPlaylists.has(item.url)) return null
+  seenPlaylists.add(item.url)
+  let info = null
+  try {
+    const res = await fetch(item.url, { credentials: 'include' })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    info = analyzePlaylist((await res.text()).slice(0, 2_000_000), item.url)
+    if (!info || info.live || info.drm) return null
+  } catch {
+    // Can't read it from here (the site may want its own Referer); GoIDM
+    // will try, and say why if it can't.
+    seenPlaylists.delete(item.url)
+    return item
+  }
+  return { ...item, variants: info.variants, duration: info.duration }
+}
+
+async function onMediaFound(tabId, found) {
   if (!(await getSettings()).detectMedia) return
+  const item = found.kind === 'stream' ? await checkPlaylist(found) : found
+  if (!item) return
   const count = await recordMedia(tabId, item)
   await ext.action.setBadgeBackgroundColor({ tabId, color: '#3a66f0' })
   await ext.action.setBadgeText({ tabId, text: String(count) })

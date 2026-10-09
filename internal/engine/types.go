@@ -43,6 +43,7 @@ type Download struct {
 	Headers      map[string]string `json:"headers,omitempty"`
 	PageURL      string            `json:"pageUrl,omitempty"` // web page the download was started from
 	Order        float64           `json:"order"`             // queue position; lower runs first
+	Variant      string            `json:"variant,omitempty"` // HLS: playlist URL of the chosen quality
 	Segments     []Segment         `json:"segments,omitempty"`
 	Status       Status            `json:"status"`
 	Error        string            `json:"error"`
@@ -105,6 +106,7 @@ type AddRequest struct {
 	SpeedLimit  int64             `json:"speedLimit"`
 	Headers     map[string]string `json:"headers"`
 	PageURL     string            `json:"pageUrl"` // web page the link came from, kept to reopen later
+	Variant     string            `json:"variant"` // HLS: playlist URL of the quality to download; empty = best
 	StartPaused bool              `json:"startPaused"`
 }
 

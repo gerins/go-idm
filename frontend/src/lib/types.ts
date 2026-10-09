@@ -52,6 +52,16 @@ export interface ProbeResult {
   etag: string
   lastModified: string
   contentType: string
+  hls: boolean // a streaming playlist (m3u8) rather than a single file
+  variants: HLSVariant[] // qualities, best first; empty when there is only one
+  duration: number // seconds, for streams
+}
+
+export interface HLSVariant {
+  url: string
+  bandwidth: number // bits per second
+  width: number
+  height: number
 }
 
 export interface AddRequest {
@@ -62,6 +72,7 @@ export interface AddRequest {
   speedLimit: number
   headers: Record<string, string>
   pageUrl: string
+  variant: string // HLS: the chosen quality's playlist URL; empty means the best
   startPaused: boolean
 }
 

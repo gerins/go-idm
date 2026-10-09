@@ -1,7 +1,7 @@
 import { send, describeError } from './lib/native.js'
 import { getSettings, saveSettings } from './lib/settings.js'
 import { ext } from './lib/api.js'
-import { formatSize } from './lib/media.js'
+import { formatDuration, formatSize } from './lib/media.js'
 import { getMedia } from './lib/mediastore.js'
 
 const $ = (id) => document.getElementById(id)
@@ -51,7 +51,10 @@ async function renderMedia(settings) {
       name.title = item.url
       const meta = document.createElement('div')
       meta.className = 'meta'
-      meta.textContent = [item.kind === 'audio' ? 'Audio' : 'Video', formatSize(item.size), item.mime].filter(Boolean).join(' · ')
+      const label = { audio: 'Audio', stream: 'Stream (HLS)' }[item.kind] ?? 'Video'
+      meta.textContent = [label, formatDuration(item.duration), formatSize(item.size), item.kind === 'stream' ? '' : item.mime]
+        .filter(Boolean)
+        .join(' · ')
       info.append(name, meta)
       const button = document.createElement('button')
       button.className = 'primary'

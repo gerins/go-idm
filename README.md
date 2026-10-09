@@ -10,7 +10,8 @@ A desktop download manager written in Go (engine) with a Svelte UI, packaged wit
 - Retries with backoff, stall detection, proxy support (http, https, socks5)
 - Filename detection (Content-Disposition, URL, MIME), safe on Windows, collision-free names
 - Sorting into Video, Music, Documents and other folders
-- Detects videos and audio on web pages and lists them in the extension popup for one-click download (direct files only, not HLS/DASH)
+- HLS streaming video (`.m3u8` links): picks the quality, fetches the segments in parallel, resumes by segment, decrypts AES-128 and joins them into one file. With [ffmpeg](https://ffmpeg.org) installed (on `PATH` or next to GoIDM) the result is an `.mp4`, and streams with a separate audio track can be merged; without it you get the `.ts` stream, which VLC and mpv play. Live streams and DRM are not supported
+- Detects videos, audio and HLS streams on web pages and lists them in the extension popup for one-click download
 - Remembers the web page each browser download came from, with a button to open it again
 - Clipboard link watcher, paste (Ctrl+V) and drag-and-drop of links
 - Light and dark themes following the OS
@@ -58,4 +59,4 @@ CLI: `make cli ARGS="-o ./out -c 8 https://example.com/file.zip"`
 ## Not yet implemented
 
 System tray and native notifications (needs Wails v3 or a tray library), scheduler,
-HLS/DASH, checksum verification.
+DASH, checksum verification.

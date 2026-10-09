@@ -209,7 +209,13 @@ func (m *Manager) Probe(ctx context.Context, rawURL string, headers map[string]s
 	client := m.client
 	h := m.requestHeaders(headers)
 	m.mu.Unlock()
-	return Probe(ctx, client, rawURL, h)
+	res, err := Probe(ctx, client, rawURL, h)
+	if err == nil && looksLikeHLS(res) {
+		if err := enrichHLS(ctx, client, res, h, ""); err != nil {
+			return nil, err
+		}
+	}
+	return res, err
 }
 
 // CheckURL reports whether raw is a URL the engine can download.
@@ -251,6 +257,7 @@ func (m *Manager) Add(req AddRequest) (Info, error) {
 		SpeedLimit:  max(req.SpeedLimit, 0),
 		Headers:     maps.Clone(req.Headers),
 		PageURL:     webURL(req.PageURL),
+		Variant:     webURL(req.Variant),
 		Order:       m.nextOrderLocked(),
 		Status:      StatusQueued,
 		CreatedAt:   time.Now(),
@@ -446,6 +453,7 @@ func (m *Manager) Remove(id string, deleteFiles bool) error {
 	if deleteFiles && d.Claimed {
 		_ = os.Remove(d.partPath())
 		_ = os.Remove(d.finalPath())
+		_ = os.RemoveAll(d.finalPath() + partsSuffix)
 	}
 	return nil
 }
@@ -546,6 +554,15 @@ func (m *Manager) finish(j *job, runErr, cause error) {
 	}
 	if segs, ok := j.snapshot(); ok {
 		e.d.Segments = segs
+		if j.hls != nil {
+			if runErr != nil {
+				e.d.Size = segmentsSize(segs) // the estimate, for the paused or failed row
+			} else {
+				// The joined file can differ in size from the pieces (an MP4
+				// made from MPEG-TS is smaller), so show it as one full piece.
+				e.d.Segments = []Segment{{Start: 0, End: e.d.Size - 1, Done: e.d.Size}}
+			}
+		}
 	}
 	switch {
 	case runErr == nil:
@@ -615,7 +632,7 @@ func (m *Manager) claimPath(j *job, suggested string) error {
 	}
 	name = netx.UniqueName(name, func(n string) bool {
 		p := filepath.Join(dir, n)
-		if exists(p) || exists(p+partSuffix) {
+		if exists(p) || exists(p+partSuffix) || exists(p+partsSuffix) {
 			return true
 		}
 		for _, o := range m.entries {
@@ -627,6 +644,11 @@ func (m *Manager) claimPath(j *job, suggested string) error {
 		return false
 	})
 	d.Dir, d.FileName, d.Category, d.Claimed = dir, name, category, true
+	// Publish the claim to the shared entry now, under the same lock. Until it
+	// is there another download picking a name would not see this one and could
+	// choose the same file.
+	e := j.e
+	e.d.Dir, e.d.FileName, e.d.Category, e.d.Claimed = dir, name, category, true
 	return nil
 }
 
@@ -644,11 +666,6 @@ func (m *Manager) requestHeaders(extra map[string]string) map[string]string {
 func (m *Manager) tick() {
 	m.mu.Lock()
 	m.tickN++
-	// Publish the claim to the shared entry now, under the same lock. Until it
-	// is there another download picking a name would not see this one and could
-	// choose the same file.
-	e := j.e
-	e.d.Dir, e.d.FileName, e.d.Category, e.d.Claimed = dir, name, category, true
 	persist := m.tickN%2 == 0
 	now := time.Now()
 	var f flush
@@ -746,6 +763,9 @@ func (m *Manager) snapshotLocked(e *entry) *Download {
 	if e.job != nil {
 		if segs, ok := e.job.snapshot(); ok {
 			d.Segments = segs
+			if e.job.hls != nil {
+				d.Size = segmentsSize(segs)
+			}
 		}
 	}
 	return &d
