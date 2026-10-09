@@ -6,10 +6,11 @@ A desktop download manager written in Go (engine) with a Svelte UI, packaged wit
 
 - Segmented downloads over HTTP `Range` (up to 32 connections), with a one-stream fallback for servers without range support
 - Pause, resume and crash-safe resume (progress is persisted per segment in SQLite; resume re-validates size and ETag)
-- Queue with a concurrency limit, global and per-download speed limits
+- Queue with a concurrency limit, global and per-download speed limits, and drag-and-drop reordering (waiting downloads start top to bottom)
 - Retries with backoff, stall detection, proxy support (http, https, socks5)
 - Filename detection (Content-Disposition, URL, MIME), safe on Windows, collision-free names
 - Sorting into Video, Music, Documents and other folders
+- Remembers the web page each browser download came from, with a button to open it again
 - Clipboard link watcher, paste (Ctrl+V) and drag-and-drop of links
 - Light and dark themes following the OS
 - Chrome/Edge/Brave/Firefox extension that captures browser downloads (with cookies and referrer) and hands them to the app, see [extension/README.md](extension/README.md)
@@ -40,6 +41,7 @@ make test            # Go tests with -race (local httptest servers, no network)
 make check           # gofmt, vet (mac + windows), frontend type-check, tests
 make build           # production build for the current OS
 make build-windows   # cross-compile build/bin/goidm.exe
+make build-windows-installer  # NSIS installer into Program Files (needs NSIS)
 make build-cli       # headless CLI into build/bin/idm-cli
 make build-host      # native host into build/bin (make dev does this for you)
 make build-firefox-extension  # Firefox extension folder into build/bin/extension-firefox
@@ -55,4 +57,4 @@ CLI: `make cli ARGS="-o ./out -c 8 https://example.com/file.zip"`
 ## Not yet implemented
 
 System tray and native notifications (needs Wails v3 or a tray library), scheduler,
-HLS/DASH, checksum verification, queue reordering.
+HLS/DASH, checksum verification.

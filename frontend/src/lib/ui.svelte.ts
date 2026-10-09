@@ -7,12 +7,17 @@ class UI {
   addOpen = $state(false)
   addPrefill = $state('')
   addHeaders = $state.raw<Record<string, string>>({})
+  addPageUrl = $state('')
   settingsOpen = $state(false)
   removeTarget = $state.raw<Info | null>(null)
+  // Queue reordering: the row being dragged, and where it would land.
+  dragId = $state<string | null>(null)
+  dropAt = $state.raw<{ id: string; after: boolean } | null>(null)
 
-  openAdd(prefill = '', headers: Record<string, string> = {}) {
+  openAdd(prefill = '', headers: Record<string, string> = {}, pageUrl = '') {
     this.addPrefill = prefill
     this.addHeaders = headers
+    this.addPageUrl = pageUrl
     this.addOpen = true
   }
 }

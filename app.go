@@ -46,6 +46,7 @@ type ExternalAdd struct {
 	URL      string            `json:"url"`
 	FileName string            `json:"fileName"`
 	Headers  map[string]string `json:"headers"`
+	PageURL  string            `json:"pageUrl"`
 }
 
 func NewApp() *App { return &App{} }
@@ -160,6 +161,10 @@ func (a *App) ProbeURL(url string, headers map[string]string) (*engine.ProbeResu
 	return a.mgr.Probe(ctx, url, headers)
 }
 
+// MoveDownload puts a download just before beforeID in the queue, or last when
+// beforeID is empty. Waiting downloads start in this order.
+func (a *App) MoveDownload(id, beforeID string) error { return a.mgr.Move(id, beforeID) }
+
 func (a *App) PauseDownload(id string) error  { return a.mgr.Pause(id) }
 func (a *App) ResumeDownload(id string) error { return a.mgr.Resume(id) }
 func (a *App) PauseAll()                      { a.mgr.PauseAll() }
@@ -192,6 +197,19 @@ func (a *App) ShowInFolder(id string) error {
 		return fmt.Errorf("download has no location yet")
 	}
 	return revealPath(info.Path)
+}
+
+// OpenPage opens the web page a download was started from in the default browser.
+func (a *App) OpenPage(id string) error {
+	info, ok := a.mgr.Get(id)
+	if !ok {
+		return engine.ErrNotFound
+	}
+	if info.PageURL == "" {
+		return fmt.Errorf("this download has no page link")
+	}
+	runtime.BrowserOpenURL(a.ctx, info.PageURL)
+	return nil
 }
 
 func (a *App) GetConfig() engine.Config { return a.mgr.Config() }
@@ -257,11 +275,11 @@ func (h ipcHandler) Add(req ipc.AddRequest) error {
 		return err
 	}
 	if h.a.mgr.Config().ConfirmCaptured {
-		h.a.deliverExternal(ExternalAdd{URL: req.URL, FileName: req.FileName, Headers: req.Headers()})
+		h.a.deliverExternal(ExternalAdd{URL: req.URL, FileName: req.FileName, Headers: req.Headers(), PageURL: req.PageURL})
 		h.a.bringToFront()
 		return nil
 	}
-	_, err := h.a.mgr.Add(engine.AddRequest{URL: req.URL, FileName: req.FileName, Headers: req.Headers()})
+	_, err := h.a.mgr.Add(engine.AddRequest{URL: req.URL, FileName: req.FileName, Headers: req.Headers(), PageURL: req.PageURL})
 	return err
 }
 

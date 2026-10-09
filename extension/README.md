@@ -28,6 +28,7 @@ The add-on ID `goidm@go-idm` is fixed in `manifest.firefox.json` and is what the
 ## What it does
 
 - **Captures downloads.** When the browser starts a download it is paused, sent to GoIDM, and cancelled in the browser only after GoIDM accepted it. If GoIDM can't be reached the download just resumes in the browser, so nothing is lost.
+- **Remembers the download page.** The page the download came from is saved with it, and the link button on a download in GoIDM reopens that page in your browser (to fetch a fresh link or find the next file). The browser often trims the referrer to just the site, so the active tab's address is used when it is on the same site. Downloads from before this feature fall back to their referrer.
 - **Right-click, Download with GoIDM** on links, images, video and audio.
 - **Starts GoIDM** if it isn't running when a download is captured.
 - **Popup** shows connection status and has the on/off switch. **Options** sets a minimum size (default 1 MB) and a list of sites to leave alone.

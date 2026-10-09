@@ -7,6 +7,7 @@ export namespace engine {
 	    connections: number;
 	    speedLimit: number;
 	    headers: Record<string, string>;
+	    pageUrl: string;
 	    startPaused: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -21,6 +22,7 @@ export namespace engine {
 	        this.connections = source["connections"];
 	        this.speedLimit = source["speedLimit"];
 	        this.headers = source["headers"];
+	        this.pageUrl = source["pageUrl"];
 	        this.startPaused = source["startPaused"];
 	    }
 	}
@@ -86,6 +88,8 @@ export namespace engine {
 	    resumable: boolean;
 	    connections: number;
 	    speedLimit: number;
+	    pageUrl: string;
+	    order: number;
 	    segments: SegmentInfo[];
 	    // Go type: time
 	    createdAt: any;
@@ -113,6 +117,8 @@ export namespace engine {
 	        this.resumable = source["resumable"];
 	        this.connections = source["connections"];
 	        this.speedLimit = source["speedLimit"];
+	        this.pageUrl = source["pageUrl"];
+	        this.order = source["order"];
 	        this.segments = this.convertValues(source["segments"], SegmentInfo);
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	        this.completedAt = this.convertValues(source["completedAt"], null);
@@ -169,6 +175,7 @@ export namespace main {
 	    url: string;
 	    fileName: string;
 	    headers: Record<string, string>;
+	    pageUrl: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ExternalAdd(source);
@@ -179,6 +186,7 @@ export namespace main {
 	        this.url = source["url"];
 	        this.fileName = source["fileName"];
 	        this.headers = source["headers"];
+	        this.pageUrl = source["pageUrl"];
 	    }
 	}
 	export class Integration {

@@ -1,5 +1,5 @@
 import { send, describeError } from './lib/native.js'
-import { buildAddMessage, cookieHeader, knownSize, shouldCapture } from './lib/capture.js'
+import { buildAddMessage, cookieHeader, knownSize, pickPageUrl, shouldCapture } from './lib/capture.js'
 import { getSettings } from './lib/settings.js'
 import { ext } from './lib/api.js'
 
@@ -13,11 +13,21 @@ async function cookiesFor(url) {
   }
 }
 
-async function handOff({ url, referrer, mime, size }) {
+async function activeTabUrl() {
+  try {
+    const [tab] = await ext.tabs.query({ active: true, lastFocusedWindow: true })
+    return tab?.url ?? ''
+  } catch {
+    return ''
+  }
+}
+
+async function handOff({ url, referrer, pageUrl, mime, size }) {
   return send(
     buildAddMessage({
       url,
       referrer,
+      pageUrl,
       mime,
       size,
       cookies: await cookiesFor(url),
@@ -58,6 +68,7 @@ async function onDownloadCreated(item) {
   const res = await handOff({
     url: item.url,
     referrer: item.referrer,
+    pageUrl: pickPageUrl(item.referrer, await activeTabUrl()),
     mime: item.mime,
     size: knownSize(item),
   })
@@ -97,7 +108,11 @@ ext.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== MENU_ID) return
   const url = info.linkUrl || info.srcUrl
   if (!url) return
-  const res = await handOff({ url, referrer: info.frameUrl || info.pageUrl || tab?.url })
+  const res = await handOff({
+    url,
+    referrer: info.frameUrl || info.pageUrl || tab?.url,
+    pageUrl: pickPageUrl(info.pageUrl || tab?.url, ''),
+  })
   if (res.ok) await refreshBadge()
   else {
     await setBadge('!')

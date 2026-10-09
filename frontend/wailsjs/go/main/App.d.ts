@@ -17,7 +17,11 @@ export function InstallIntegration():Promise<main.Integration>;
 
 export function ListDownloads():Promise<Array<engine.Info>>;
 
+export function MoveDownload(arg1:string,arg2:string):Promise<void>;
+
 export function OpenFile(arg1:string):Promise<void>;
+
+export function OpenPage(arg1:string):Promise<void>;
 
 export function PauseAll():Promise<void>;
 

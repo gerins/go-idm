@@ -57,7 +57,7 @@ func TestRoundTrip(t *testing.T) {
 	if err != nil || !p.OK || p.App != "goidm" || p.Version != "1.2.3" {
 		t.Fatalf("ping = %+v, %v", p, err)
 	}
-	want := AddRequest{URL: "https://x/y.zip", Cookies: "a=b", Referrer: "https://x/", UserAgent: "UA", Size: 5}
+	want := AddRequest{URL: "https://x/y.zip", Cookies: "a=b", Referrer: "https://x/", PageURL: "https://x/page", UserAgent: "UA", Size: 5}
 	if err := c.Add(ctx, want); err != nil {
 		t.Fatal(err)
 	}

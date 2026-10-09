@@ -44,6 +44,7 @@ type AddRequest struct {
 	URL       string `json:"url"`
 	FileName  string `json:"fileName,omitempty"`
 	Referrer  string `json:"referrer,omitempty"`
+	PageURL   string `json:"pageUrl,omitempty"` // the page the download was started from
 	Cookies   string `json:"cookies,omitempty"`
 	UserAgent string `json:"userAgent,omitempty"`
 	MIME      string `json:"mime,omitempty"`

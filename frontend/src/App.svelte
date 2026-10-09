@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { EventsOn } from '../wailsjs/runtime/runtime'
   import { api } from './lib/api'
-  import type { ExternalAdd } from './lib/types'
+  import type { ExternalAdd, Info } from './lib/types'
   import AddDialog from './components/AddDialog.svelte'
   import DownloadRow from './components/DownloadRow.svelte'
   import EmptyState from './components/EmptyState.svelte'
@@ -28,7 +28,7 @@
     t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')
 
   function openCaptured(e: ExternalAdd) {
-    ui.openAdd(e.url, e.headers ?? {})
+    ui.openAdd(e.url, e.headers ?? {}, e.pageUrl ?? '')
   }
 
   onMount(() => {
@@ -93,7 +93,22 @@
     if (dragDepth === 0) dragging = false
   }
 
+  // Rows are reordered by dragging; their own drop handler does the work.
+  async function reorder(dragId: string, target: Info, after: boolean) {
+    let beforeId = target.id
+    if (after) {
+      const i = visible.findIndex((d) => d.id === target.id)
+      beforeId = visible[i + 1]?.id ?? ''
+    }
+    try {
+      await api.move(dragId, beforeId)
+    } catch (e) {
+      toasts.error('Could not move download', errMsg(e))
+    }
+  }
+
   function onDrop(e: DragEvent) {
+    if (ui.dragId) return
     e.preventDefault()
     dragDepth = 0
     dragging = false
@@ -126,7 +141,7 @@
         <EmptyState filtered={downloads.counts.all > 0} />
       {:else}
         {#each visible as d (d.id)}
-          <DownloadRow {d} />
+          <DownloadRow {d} onreorder={reorder} />
         {/each}
       {/if}
     </div>

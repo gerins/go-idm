@@ -8,7 +8,10 @@ class Downloads {
   items = $state.raw<Record<string, Info>>({})
   loaded = $state(false)
 
-  all = $derived(Object.values(this.items).sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+  // Queue order: the download at the top starts first, new ones join at the bottom.
+  all = $derived(
+    Object.values(this.items).sort((a, b) => a.order - b.order || a.createdAt.localeCompare(b.createdAt)),
+  )
 
   counts = $derived.by(() => {
     const c = { all: 0, active: 0, waiting: 0, completed: 0, failed: 0 }

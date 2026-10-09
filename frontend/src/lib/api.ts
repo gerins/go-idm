@@ -10,6 +10,7 @@ export const api = {
   add: (req: AddRequest) => App.AddDownload(as(req)).then((v) => as<Info>(v)),
   probe: (url: string, headers: Record<string, string> = {}) =>
     App.ProbeURL(url, headers).then((v) => as<ProbeResult>(v)),
+  move: (id: string, beforeId: string) => App.MoveDownload(id, beforeId),
   pause: (id: string) => App.PauseDownload(id),
   resume: (id: string) => App.ResumeDownload(id),
   pauseAll: () => App.PauseAll(),
@@ -17,6 +18,7 @@ export const api = {
   remove: (id: string, deleteFiles: boolean) => App.RemoveDownload(id, deleteFiles),
   openFile: (id: string) => App.OpenFile(id),
   showInFolder: (id: string) => App.ShowInFolder(id),
+  openPage: (id: string) => App.OpenPage(id),
   getConfig: () => App.GetConfig().then((v) => as<Config>(v)),
   saveConfig: (c: Config) => App.SaveConfig(as(c)).then((v) => as<Config>(v)),
   frontendReady: () => App.FrontendReady().then((v) => as<ExternalAdd[]>(v ?? [])),

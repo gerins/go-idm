@@ -8,7 +8,8 @@
   import Icon from './Icon.svelte'
   import SegmentBar from './SegmentBar.svelte'
 
-  let { d }: { d: Info } = $props()
+  // onreorder is told to put the dragged download before or after this row.
+  let { d, onreorder }: { d: Info; onreorder: (dragId: string, target: Info, after: boolean) => void } = $props()
 
   // Before the first probe the engine has no category; guess from the name.
   const category = $derived(d.category || categoryFor(d.fileName))
@@ -43,6 +44,46 @@
     }[d.status],
   )
 
+  const dragging = $derived(ui.dragId === d.id)
+  const dropEdge = $derived(ui.dropAt?.id === d.id ? (ui.dropAt.after ? 'after' : 'before') : null)
+
+  function onDragStart(e: DragEvent) {
+    ui.dragId = d.id
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move'
+      // A custom type only, so the window's "drop a link" handling ignores it.
+      e.dataTransfer.setData('application/x-goidm-download', d.id)
+    }
+  }
+
+  function onDragOver(e: DragEvent) {
+    if (!ui.dragId) return
+    e.preventDefault()
+    if (ui.dragId === d.id) {
+      ui.dropAt = null
+      return
+    }
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const after = e.clientY > r.top + r.height / 2
+    if (ui.dropAt?.id !== d.id || ui.dropAt.after !== after) ui.dropAt = { id: d.id, after }
+  }
+
+  function onDrop(e: DragEvent) {
+    if (!ui.dragId) return
+    e.preventDefault()
+    e.stopPropagation()
+    const from = ui.dragId
+    const to = ui.dropAt
+    onDragEnd()
+    if (from !== d.id && to?.id === d.id) onreorder(from, d, to.after)
+  }
+
+  function onDragEnd() {
+    ui.dragId = null
+    ui.dropAt = null
+  }
+
   async function run(fn: () => Promise<unknown>) {
     try {
       await fn()
@@ -53,11 +94,30 @@
 </script>
 
 <div
-  class="group flex items-center gap-3 border-b border-border/60 px-4 py-3 transition-colors hover:bg-surface-2/60"
+  class="group flex items-center gap-3 border-b border-border/60 px-4 py-3 transition-colors hover:bg-surface-2/60 {dragging
+    ? 'opacity-40'
+    : ''}"
+  style={dropEdge === 'before'
+    ? 'box-shadow: inset 0 2px 0 0 var(--accent)'
+    : dropEdge === 'after'
+      ? 'box-shadow: inset 0 -2px 0 0 var(--accent)'
+      : ''}
   role="row"
   tabindex="-1"
+  draggable="true"
+  ondragstart={onDragStart}
+  ondragover={onDragOver}
+  ondrop={onDrop}
+  ondragend={onDragEnd}
   ondblclick={() => d.status === 'completed' && run(() => api.openFile(d.id))}
 >
+  <span
+    class="-mr-1.5 -ml-2 shrink-0 cursor-grab text-faint opacity-0 transition-opacity group-hover:opacity-100"
+    title="Drag to change the queue order"
+  >
+    <Icon name="grip" size={16} />
+  </span>
+
   <div
     class="grid size-10 shrink-0 place-items-center rounded-xl"
     style="background: color-mix(in srgb, {meta.color} 16%, transparent); color: {meta.color}"
@@ -114,6 +174,16 @@
     {:else}
       <button class="icon-btn" title="Open file" aria-label="Open file" onclick={() => run(() => api.openFile(d.id))}>
         <Icon name="external" />
+      </button>
+    {/if}
+    {#if d.pageUrl}
+      <button
+        class="icon-btn"
+        title="Open download page&#10;{d.pageUrl}"
+        aria-label="Open download page"
+        onclick={() => run(() => api.openPage(d.id))}
+      >
+        <Icon name="link" />
       </button>
     {/if}
     {#if d.path}

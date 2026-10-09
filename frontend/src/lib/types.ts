@@ -24,6 +24,8 @@ export interface Info {
   resumable: boolean
   connections: number
   speedLimit: number
+  pageUrl: string // the page the download was started from, "" if unknown
+  order: number // queue position; lower starts first
   segments: SegmentInfo[]
   createdAt: string
   completedAt: string
@@ -59,6 +61,7 @@ export interface AddRequest {
   connections: number
   speedLimit: number
   headers: Record<string, string>
+  pageUrl: string
   startPaused: boolean
 }
 
@@ -87,4 +90,5 @@ export interface ExternalAdd {
   url: string
   fileName: string
   headers: Record<string, string> | null
+  pageUrl: string
 }

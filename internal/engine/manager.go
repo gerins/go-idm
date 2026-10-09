@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"cmp"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -106,7 +107,19 @@ func (m *Manager) Load() error {
 	if err != nil {
 		return err
 	}
-	slices.SortStableFunc(ds, func(a, b *Download) int { return a.CreatedAt.Compare(b.CreatedAt) })
+	slices.SortStableFunc(ds, func(a, b *Download) int {
+		return cmp.Or(cmp.Compare(a.Order, b.Order), a.CreatedAt.Compare(b.CreatedAt))
+	})
+	// Downloads saved before queue order existed all have Order 0. Number
+	// them in creation order, and save so every row agrees from now on.
+	if !isStrictlyOrdered(ds) {
+		for i, d := range ds {
+			d.Order = float64(i + 1)
+			if err := m.store.Save(d); err != nil {
+				return err
+			}
+		}
+	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -237,6 +250,8 @@ func (m *Manager) Add(req AddRequest) (Info, error) {
 		Connections: clamp(conns, 1, 32),
 		SpeedLimit:  max(req.SpeedLimit, 0),
 		Headers:     maps.Clone(req.Headers),
+		PageURL:     webURL(req.PageURL),
+		Order:       m.nextOrderLocked(),
 		Status:      StatusQueued,
 		CreatedAt:   time.Now(),
 	}}
@@ -252,6 +267,77 @@ func (m *Manager) Add(req AddRequest) (Info, error) {
 	info := m.infoLocked(e)
 	m.release(&f)
 	return info, nil
+}
+
+// nextOrderLocked is the queue position for a download added at the end.
+func (m *Manager) nextOrderLocked() float64 {
+	if n := len(m.order); n > 0 {
+		return m.entries[m.order[n-1]].d.Order + 1
+	}
+	return 1
+}
+
+func isStrictlyOrdered(ds []*Download) bool {
+	for i := 1; i < len(ds); i++ {
+		if ds[i].Order <= ds[i-1].Order {
+			return false
+		}
+	}
+	return true
+}
+
+// Move places a download immediately before beforeID in the queue, or at the
+// end when beforeID is empty. Queued downloads start in queue order; running
+// ones are not interrupted.
+func (m *Manager) Move(id, beforeID string) error {
+	m.mu.Lock()
+	e, ok := m.entries[id]
+	if !ok || (beforeID != "" && m.entries[beforeID] == nil) {
+		m.mu.Unlock()
+		return ErrNotFound
+	}
+	if m.closed {
+		m.mu.Unlock()
+		return ErrClosed
+	}
+	if id == beforeID {
+		m.mu.Unlock()
+		return nil
+	}
+
+	rest := slices.DeleteFunc(slices.Clone(m.order), func(s string) bool { return s == id })
+	at := len(rest)
+	if beforeID != "" {
+		at = slices.Index(rest, beforeID)
+	}
+	moved := slices.Insert(slices.Clone(rest), at, id)
+	if slices.Equal(moved, m.order) {
+		m.mu.Unlock()
+		return nil
+	}
+	m.order = moved
+
+	// Give the download a position between its new neighbours, so only its own
+	// row has to be saved. When the gap has run out, renumber everything.
+	var f flush
+	switch {
+	case at == len(rest):
+		e.d.Order = m.entries[rest[at-1]].d.Order + 1
+	case at == 0:
+		e.d.Order = m.entries[rest[0]].d.Order - 1
+	default:
+		lo, hi := m.entries[rest[at-1]].d.Order, m.entries[rest[at]].d.Order
+		e.d.Order = (lo + hi) / 2
+		if e.d.Order <= lo || e.d.Order >= hi {
+			for i, oid := range m.order {
+				m.entries[oid].d.Order = float64(i + 1)
+				f.touch(m.entries[oid], true)
+			}
+		}
+	}
+	f.touch(e, true)
+	m.release(&f)
+	return nil
 }
 
 // Pause stops a running download, keeping its progress, or dequeues a queued one.
@@ -682,6 +768,8 @@ func (m *Manager) infoLocked(e *entry) Info {
 		Resumable:   d.Resumable,
 		Connections: d.Connections,
 		SpeedLimit:  d.SpeedLimit,
+		PageURL:     pageURL(d),
+		Order:       d.Order,
 		CreatedAt:   d.CreatedAt,
 		CompletedAt: d.CompletedAt,
 		Segments:    make([]SegmentInfo, len(d.Segments)),

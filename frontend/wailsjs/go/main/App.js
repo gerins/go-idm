@@ -30,8 +30,16 @@ export function ListDownloads() {
   return window['go']['main']['App']['ListDownloads']();
 }
 
+export function MoveDownload(arg1, arg2) {
+  return window['go']['main']['App']['MoveDownload'](arg1, arg2);
+}
+
 export function OpenFile(arg1) {
   return window['go']['main']['App']['OpenFile'](arg1);
+}
+
+export function OpenPage(arg1) {
+  return window['go']['main']['App']['OpenPage'](arg1);
 }
 
 export function PauseAll() {

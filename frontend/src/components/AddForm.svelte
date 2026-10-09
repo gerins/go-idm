@@ -125,6 +125,7 @@
           connections: resumable ? connections : 1,
           speedLimit: limit,
           headers,
+          pageUrl: ui.addPageUrl,
           startPaused: !startNow,
         })
         added++

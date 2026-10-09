@@ -57,14 +57,39 @@ export function shouldCapture(item, settings) {
   return { capture: true, reason: 'ok' }
 }
 
+function webUrl(raw) {
+  try {
+    const u = new URL(raw)
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The page a download was started from, to reopen later. The referrer is that
+ * page, but browsers usually cut it to the bare origin for cross-site links; in
+ * that case the active tab's URL is better when it is on the same site.
+ * Returns '' when there is no usable page.
+ */
+export function pickPageUrl(referrer, tabUrl) {
+  const ref = webUrl(referrer)
+  if (!ref) return ''
+  const tab = webUrl(tabUrl)
+  const originOnly = ref.pathname === '/' && !ref.search && !ref.hash
+  if (originOnly && tab && tab.origin === ref.origin) return tab.href
+  return ref.href
+}
+
 /** "a=1; b=2" from chrome.cookies.Cookie objects. */
 export function cookieHeader(cookies) {
   return (cookies ?? []).map((c) => `${c.name}=${c.value}`).join('; ')
 }
 
-export function buildAddMessage({ url, referrer, cookies, userAgent, mime, size }) {
+export function buildAddMessage({ url, referrer, pageUrl, cookies, userAgent, mime, size }) {
   const msg = { type: 'add', url }
   if (referrer) msg.referrer = referrer
+  if (pageUrl) msg.pageUrl = pageUrl
   if (cookies) msg.cookies = cookies
   if (userAgent) msg.userAgent = userAgent
   if (mime) msg.mime = mime

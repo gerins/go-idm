@@ -41,6 +41,8 @@ type Download struct {
 	Connections  int               `json:"connections"`
 	SpeedLimit   int64             `json:"speedLimit"` // bytes/s, 0 = unlimited
 	Headers      map[string]string `json:"headers,omitempty"`
+	PageURL      string            `json:"pageUrl,omitempty"` // web page the download was started from
+	Order        float64           `json:"order"`             // queue position; lower runs first
 	Segments     []Segment         `json:"segments,omitempty"`
 	Status       Status            `json:"status"`
 	Error        string            `json:"error"`
@@ -87,6 +89,8 @@ type Info struct {
 	Resumable   bool          `json:"resumable"`
 	Connections int           `json:"connections"`
 	SpeedLimit  int64         `json:"speedLimit"`
+	PageURL     string        `json:"pageUrl"` // where the download was started; "" if unknown
+	Order       float64       `json:"order"`   // queue position; lower runs first
 	Segments    []SegmentInfo `json:"segments"`
 	CreatedAt   time.Time     `json:"createdAt"`
 	CompletedAt time.Time     `json:"completedAt"`
@@ -100,6 +104,7 @@ type AddRequest struct {
 	Connections int               `json:"connections"` // 0 = default
 	SpeedLimit  int64             `json:"speedLimit"`
 	Headers     map[string]string `json:"headers"`
+	PageURL     string            `json:"pageUrl"` // web page the link came from, kept to reopen later
 	StartPaused bool              `json:"startPaused"`
 }
 

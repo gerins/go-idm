@@ -4,6 +4,7 @@ import {
   buildAddMessage,
   cookieHeader,
   hostMatches,
+  pickPageUrl,
   knownSize,
   normalizeHost,
   parseHostList,
@@ -84,4 +85,26 @@ test('native error classification, Firefox wording', () => {
     classifyError('This extension does not have permission to use native application com.goidm.host'),
     'host_forbidden',
   )
+})
+
+test('page url: a full referrer is the page', () => {
+  assert.equal(pickPageUrl('https://site.example/dl/page?id=3', 'https://site.example/other'), 'https://site.example/dl/page?id=3')
+})
+
+test('page url: an origin-only referrer is upgraded to the same-site active tab', () => {
+  assert.equal(pickPageUrl('https://site.example/', 'https://site.example/dl/page'), 'https://site.example/dl/page')
+  assert.equal(pickPageUrl('https://site.example/', 'https://other.example/dl/page'), 'https://site.example/')
+  assert.equal(pickPageUrl('https://site.example/', ''), 'https://site.example/')
+})
+
+test('page url: nothing usable gives an empty string', () => {
+  assert.equal(pickPageUrl('', 'https://site.example/page'), '')
+  assert.equal(pickPageUrl(undefined, undefined), '')
+  assert.equal(pickPageUrl('about:blank', 'https://site.example/page'), '')
+  assert.equal(pickPageUrl('chrome://downloads', ''), '')
+})
+
+test('add message carries the page url only when there is one', () => {
+  assert.equal(buildAddMessage({ url: 'https://x/a.zip', pageUrl: 'https://x/p' }).pageUrl, 'https://x/p')
+  assert.equal('pageUrl' in buildAddMessage({ url: 'https://x/a.zip', pageUrl: '' }), false)
 })
